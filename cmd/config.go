@@ -8,7 +8,8 @@ import (
 )
 
 type EnvConfig struct {
-	Port int `koanf:"Port"`
+	Enviroment string `koanf:"ENVIRONMENT"`
+	Port       int    `koanf:"Port"`
 }
 
 var k = koanf.New(".")
@@ -34,6 +35,10 @@ func LoadConfig() (*EnvConfig, error) {
 func validateConfig(env *EnvConfig) error {
 	// PORT validation
 	return v.ValidateStruct(env,
+		v.Field(&env.Enviroment,
+			v.Required,
+			v.In("DEV", "PROD"),
+		),
 		v.Field(&env.Port,
 			v.Required,
 			v.Min(1),
