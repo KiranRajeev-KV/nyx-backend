@@ -127,6 +127,7 @@ DROP TYPE IF EXISTS claim_status;
 DROP TYPE IF EXISTS item_type;
 DROP TYPE IF EXISTS item_status;
 DROP TYPE IF EXISTS user_role;
+DROP TYPE IF EXISTS target_type;
 
 DROP EXTENSION IF EXISTS "vector";
 -- +goose StatementEnd
