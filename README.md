@@ -18,7 +18,7 @@ Nyx is a backend service designed to manage items, claims, and user interactions
    ```
 
 2. **Setup the project**
-   Ensure you have Go, Docker, and Taskfile installed on your machine.
+   Ensure you have Go, Docker, and [Taskfile](https://taskfile.dev/docs/installation) installed on your machine.
    ```sh
    task setup
    ```
