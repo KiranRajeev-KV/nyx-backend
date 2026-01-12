@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 tasks:
   default:
@@ -76,24 +76,30 @@ tasks:
   # ===== Migrations =====
   status:
     desc: "Show migration status"
-    cmds:
-      - goose -dir internal/db/migrations postgres "{{.GOOSE_DBSTRING}}" status
     env:
-      GOOSE_DBSTRING: "postgres://postgres:1234@localhost:5432/postgres"
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: "host=localhost user=postgres password=1234 dbname=postgres sslmode=disable"
+      GOOSE_MIGRATION_DIR: internal/db/migrations
+    cmds:
+      - goose status
 
   up:
     desc: "Run all pending migrations"
-    cmds:
-      - goose -dir internal/db/migrations postgres "{{.GOOSE_DBSTRING}}" up
     env:
-      GOOSE_DBSTRING: "postgres://postgres:1234@localhost:5432/postgres"
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: "host=localhost user=postgres password=1234 dbname=postgres sslmode=disable"
+      GOOSE_MIGRATION_DIR: internal/db/migrations
+    cmds:
+      - goose up
 
   down:
     desc: "Rollback last migration"
-    cmds:
-      - goose -dir internal/db/migrations postgres "{{.GOOSE_DBSTRING}}" down
     env:
-      GOOSE_DBSTRING: "postgres://postgres:1234@localhost:5432/postgres"
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: "host=localhost user=postgres password=1234 dbname=postgres sslmode=disable"
+      GOOSE_MIGRATION_DIR: internal/db/migrations
+    cmds:
+      - goose down
 
   # ===== Code Generation =====
   gen:
