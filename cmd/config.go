@@ -1,6 +1,10 @@
 package cmd
 
 import (
+	"errors"
+	"net/url"
+	"strings"
+
 	v "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/knadh/koanf/parsers/dotenv"
 	"github.com/knadh/koanf/providers/file"
@@ -8,11 +12,13 @@ import (
 )
 
 type EnvConfig struct {
-	Enviroment string `koanf:"ENVIRONMENT"`
-	Port       int    `koanf:"Port"`
+	Enviroment  string `koanf:"ENVIRONMENT"`
+	Port        int    `koanf:"Port"`
+	DatabaseURL string `koanf:"GOOSE_DBSTRING"`
 }
 
 var k = koanf.New(".")
+var Env *EnvConfig
 
 func LoadConfig() (*EnvConfig, error) {
 	env := &EnvConfig{}
@@ -43,6 +49,23 @@ func validateConfig(env *EnvConfig) error {
 			v.Required,
 			v.Min(1),
 			v.Max(65535),
+		),
+		v.Field(&env.DatabaseURL,
+			v.Required,
+			v.By(func(value any) error {
+				s, ok := value.(string)
+				if !ok {
+					return errors.New("database URL must be a string")
+				}
+				if !strings.HasPrefix(s, "postgres://") {
+					return errors.New("database URL must start with 'postgres://'")
+				}
+				parsed, err := url.Parse(s)
+				if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+					return errors.New("database URL must be a valid postgres URI")
+				}
+				return nil
+			}),
 		),
 	)
 }
