@@ -1,0 +1,160 @@
+version: '3'
+
+tasks:
+  default:
+    desc: "Show available tasks"
+    cmds:
+      - task -l
+
+  # ===== Setup =====
+  setup:
+    desc: "Setup project (install dependencies, create .env)"
+    cmds:
+      - task: deps
+      - task: env
+      - task: docker:up
+    silent: false
+
+  deps:
+    desc: "Download and tidy Go dependencies"
+    cmds:
+      - go mod download
+      - go mod tidy
+
+  env:
+    desc: "Create .env file from .env.sample"
+    cmds:
+      - test -f .env || cp .env.sample .env
+      - echo "[OK] .env file created/exists"
+
+  # ===== Development =====
+  dev:
+    desc: "Start development server with hot reload (requires air)"
+    cmds:
+      - air
+    interactive: true
+
+  build:
+    desc: "Build the project"
+    cmds:
+      - go build -o ./bin/nyx-backend main.go
+      - 'echo "[OK] Built: ./bin/nyx-backend"'
+
+  run:
+    desc: "Build and run the project"
+    cmds:
+      - task: build
+      - ./bin/nyx-backend
+
+  # ===== Database =====
+  docker:up:
+    desc: "Start PostgreSQL and Drizzle Gateway containers"
+    cmds:
+      - docker compose up -d
+      - echo "[OK] Database services started"
+      - sleep 3
+      - 'echo "PostgreSQL: localhost:5432"'
+      - 'echo "Drizzle Gateway: localhost:4983"'
+
+  docker:down:
+    desc: "Stop and remove all containers"
+    cmds:
+      - docker compose down
+      - echo "[OK] Database services stopped"
+
+  docker:logs:
+    desc: "View database container logs"
+    cmds:
+      - docker compose logs -f postgres
+
+  docker:reset:
+    desc: "Stop, remove containers and volumes (WARNING: deletes data)"
+    cmds:
+      - docker compose down -v
+      - echo "[OK] Database reset complete"
+
+  # ===== Migrations =====
+  status:
+    desc: "Show migration status"
+    cmds:
+      - goose -dir internal/db/migrations postgres "{{.GOOSE_DBSTRING}}" status
+    env:
+      GOOSE_DBSTRING: "postgres://postgres:1234@localhost:5432/postgres"
+
+  up:
+    desc: "Run all pending migrations"
+    cmds:
+      - goose -dir internal/db/migrations postgres "{{.GOOSE_DBSTRING}}" up
+    env:
+      GOOSE_DBSTRING: "postgres://postgres:1234@localhost:5432/postgres"
+
+  down:
+    desc: "Rollback last migration"
+    cmds:
+      - goose -dir internal/db/migrations postgres "{{.GOOSE_DBSTRING}}" down
+    env:
+      GOOSE_DBSTRING: "postgres://postgres:1234@localhost:5432/postgres"
+
+  # ===== Code Generation =====
+  gen:
+    desc: "Generate code (sqlc)"
+    cmds:
+      - sqlc generate
+      - echo "[OK] Code generation complete"
+
+  gen:watch:
+    desc: "Watch for changes and regenerate (requires watchexec)"
+    cmds:
+      - watchexec -e sql,yaml -- go-task gen
+
+  # ===== Testing =====
+  # test:
+  #   desc: "Run all tests"
+  #   cmds:
+  #     - go test -v ./...
+
+  # test:coverage:
+  #   desc: "Run tests with coverage report"
+  #   cmds:
+  #     - go test -v -coverprofile=coverage.out ./...
+  #     - go tool cover -html=coverage.out -o coverage.html
+  #     - 'echo "[OK] Coverage report: coverage.html"'
+
+  # test:unit:
+  #   desc: "Run unit tests only"
+  #   cmds:
+  #     - go test -v -short ./...
+
+  # ===== Linting & Formatting =====
+  fmt:
+    desc: "Format Go code"
+    cmds:
+      - go fmt ./...
+      - echo "[OK] Code formatted"
+
+  lint:
+    desc: "Run linter (requires golangci-lint)"
+    cmds:
+      - golangci-lint run ./...
+
+  vet:
+    desc: "Run go vet"
+    cmds:
+      - go vet ./...
+      - echo "[OK] No issues found"
+
+  # ===== Cleanup =====
+  # clean:
+  #   desc: "Remove build artifacts and generated files"
+  #   cmds:
+  #     - rm -rf ./bin
+  #     - rm -f coverage.out coverage.html
+  #     - echo "[OK] Cleanup complete"
+
+  # clean:all:
+  #   desc: "Deep clean (includes dependencies and db)"
+  #   cmds:
+  #     - task: clean
+  #     - task: db:reset
+  #     - rm -rf vendor
+  #     - echo "[OK] Deep cleanup complete"
