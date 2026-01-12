@@ -1,0 +1,15 @@
+version: "2"
+sql:
+  - name: "nyxdb"
+    engine: "postgresql"
+    schema:
+      - "internal/db/migrations"
+    queries:
+      - "internal/db/queries"
+    gen:
+      go:
+        out: "internal/db/gen"
+        package: "db"
+        sql_package: "pgx/v5"
+    database:
+      uri: "postgresql://postgres:1234@localhost:5432/postgres"
