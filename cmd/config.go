@@ -8,7 +8,7 @@ import (
 )
 
 type EnvConfig struct {
-	Port string `koanf:"PORT"`
+	Port int `koanf:"Port"`
 }
 
 var k = koanf.New(".")

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -30,14 +31,14 @@ func StartServer() {
 	}
 
 	server := &http.Server{
-		Addr:    ":" + env.Port,
+		Addr:    ":" + strconv.Itoa(env.Port),
 		Handler: router,
 	}
 
 	go func() {
-		fmt.Println("[OK]: Start the server on port " + ":" + env.Port)
+		fmt.Println("[OK]: Start the server on port " + ":" + strconv.Itoa(env.Port))
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fmt.Println("could not listen on port "+":"+env.Port, err)
+			fmt.Println("could not listen on port "+":"+strconv.Itoa(env.Port), err)
 		} // Blocking in nature
 	}()
 
