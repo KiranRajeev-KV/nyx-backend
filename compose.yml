@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg18
+    container_name: nyx-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "1234"
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    networks:
+      - nyx-network
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  drizzle-gate:
+    image: ghcr.io/drizzle-team/gateway:latest
+    container_name: nyx-drizzle-gateway
+    environment:
+      DATABASE_URL: postgresql://postgres:1234@postgres:5432/postgres
+      STORE_PATH: /app
+    restart: on-failure
+    depends_on:
+      - postgres
+    ports:
+      - "4983:4983"
+    volumes:
+      - drizzle_gateway_data:/app
+    networks:
+      - nyx-network
+
+volumes:
+  postgres_data:
+  drizzle_gateway_data:
+
+networks:
+  nyx-network:
+    driver: bridge
