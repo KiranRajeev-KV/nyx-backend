@@ -15,6 +15,8 @@ import (
 )
 
 func StartServer() {
+	gin.SetMode(gin.ReleaseMode)
+
 	router := gin.Default()
 
 	fmt.Println("Starting server on port 8080...")
