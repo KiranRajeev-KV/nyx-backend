@@ -26,21 +26,29 @@ func StartServer() {
 		})
 	})
 
-	env, err := cmd.LoadConfig()
+	cfg, err := cmd.LoadConfig()
 	if err != nil {
 		fmt.Println("Error loading config:", err)
 		return
 	}
 
+	cmd.Env = cfg
+
+	// Initialize DB Pool
+	if err := cmd.InitDBPool(); err != nil {
+		fmt.Println("Error initializing database pool:", err)
+		return
+	}
+
 	server := &http.Server{
-		Addr:    ":" + strconv.Itoa(env.Port),
+		Addr:    ":" + strconv.Itoa(cmd.Env.Port),
 		Handler: router,
 	}
 
 	go func() {
-		fmt.Println("[OK]: Start the server on port " + ":" + strconv.Itoa(env.Port))
+		fmt.Println("[OK]: Start the server on port " + ":" + strconv.Itoa(cmd.Env.Port))
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fmt.Println("could not listen on port "+":"+strconv.Itoa(env.Port), err)
+			fmt.Println("could not listen on port "+":"+strconv.Itoa(cmd.Env.Port), err)
 		} // Blocking in nature
 	}()
 
