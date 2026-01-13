@@ -1,0 +1,22 @@
+meta {
+  name: verify-otp
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{BASE_URL}}/auth/verify-otp
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "otp": "412193"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
