@@ -11,10 +11,50 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const checkEmailExists = `-- name: CheckEmailExists :one
+SELECT
+  EXISTS (
+    SELECT
+      1
+    FROM
+      users
+    WHERE
+      email = $1
+      AND is_verified = TRUE)
+`
+
+func (q *Queries) CheckEmailExists(ctx context.Context, email string) (bool, error) {
+	row := q.db.QueryRow(ctx, checkEmailExists, email)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const checkPendingOnboarding = `-- name: CheckPendingOnboarding :one
+SELECT
+  EXISTS (
+    SELECT
+      1
+    FROM
+      user_onboarding
+    WHERE
+      email = $1)
+`
+
+func (q *Queries) CheckPendingOnboarding(ctx context.Context, email string) (bool, error) {
+	row := q.db.QueryRow(ctx, checkPendingOnboarding, email)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const checkRefreshTokenQuery = `-- name: CheckRefreshTokenQuery :one
-SELECT refresh_token 
-FROM users 
-WHERE email = $1
+SELECT
+  refresh_token
+FROM
+  users
+WHERE
+  email = $1
 `
 
 func (q *Queries) CheckRefreshTokenQuery(ctx context.Context, email string) (pgtype.Text, error) {
@@ -25,7 +65,8 @@ func (q *Queries) CheckRefreshTokenQuery(ctx context.Context, email string) (pgt
 }
 
 const revokeRefreshTokenQuery = `-- name: RevokeRefreshTokenQuery :one
-UPDATE users
+UPDATE
+  users
 SET
   refresh_token = NULL,
   updated_at = NOW()
@@ -39,4 +80,60 @@ func (q *Queries) RevokeRefreshTokenQuery(ctx context.Context, email string) (st
 	row := q.db.QueryRow(ctx, revokeRefreshTokenQuery, email)
 	err := row.Scan(&email)
 	return email, err
+}
+
+const upsertUserOnboarding = `-- name: UpsertUserOnboarding :one
+INSERT INTO user_onboarding(name, email, password, otp, expires_at, attempts)
+  VALUES ($1, $2, $3, $4, $5, 0)
+ON CONFLICT (email)
+  DO UPDATE SET
+    name = EXCLUDED.name,
+    password = EXCLUDED.password,
+    otp = EXCLUDED.otp,
+    expires_at = EXCLUDED.expires_at,
+    attempts = 0
+  RETURNING
+    id,
+    email,
+    name,
+    otp,
+    expires_at,
+    attempts
+`
+
+type UpsertUserOnboardingParams struct {
+	Name      string
+	Email     string
+	Password  string
+	Otp       string
+	ExpiresAt pgtype.Timestamptz
+}
+
+type UpsertUserOnboardingRow struct {
+	ID        int32
+	Email     string
+	Name      string
+	Otp       string
+	ExpiresAt pgtype.Timestamptz
+	Attempts  pgtype.Int4
+}
+
+func (q *Queries) UpsertUserOnboarding(ctx context.Context, arg UpsertUserOnboardingParams) (UpsertUserOnboardingRow, error) {
+	row := q.db.QueryRow(ctx, upsertUserOnboarding,
+		arg.Name,
+		arg.Email,
+		arg.Password,
+		arg.Otp,
+		arg.ExpiresAt,
+	)
+	var i UpsertUserOnboardingRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
+		&i.Otp,
+		&i.ExpiresAt,
+		&i.Attempts,
+	)
+	return i, err
 }

@@ -293,6 +293,19 @@ type User struct {
 	Role         UserRole
 	RefreshToken pgtype.Text
 	TrustScore   pgtype.Int4
+	IsVerified   bool
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
+}
+
+type UserOnboarding struct {
+	ID         int32
+	Name       string
+	Email      string
+	Password   string
+	Otp        string
+	Attempts   pgtype.Int4
+	VerifiedAt pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+	ExpiresAt  pgtype.Timestamptz
 }
