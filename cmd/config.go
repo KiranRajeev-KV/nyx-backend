@@ -12,8 +12,8 @@ import (
 )
 
 type EnvConfig struct {
-	Enviroment  string `koanf:"ENVIRONMENT"`
-	Port        int    `koanf:"Port"`
+	Environment string `koanf:"ENVIRONMENT"`
+	Port        int    `koanf:"PORT"`
 	DatabaseURL string `koanf:"GOOSE_DBSTRING"`
 }
 
@@ -41,7 +41,7 @@ func LoadConfig() (*EnvConfig, error) {
 func validateConfig(env *EnvConfig) error {
 	// PORT validation
 	return v.ValidateStruct(env,
-		v.Field(&env.Enviroment,
+		v.Field(&env.Environment,
 			v.Required,
 			v.In("DEV", "PROD"),
 		),
