@@ -47,6 +47,25 @@ func StartServer() {
 	}
 	logger.Log.Info("[OK]: DB Pool initialized successfully")
 
+	// Initialize RSA
+	err = cmd.CheckRSAKeyPairExists()
+	if err != nil {
+		err = cmd.GenerateRSAKeyPair()
+		if err != nil {
+			logger.Log.Fatal("[CRASH]: Failed to initialize rsa", err)
+		}
+		logger.Log.Info("[OK]: RSA keypair generated and saved successfully.")
+	} else {
+		logger.Log.Info("[OK]: Using existing RSA keypair.")
+	}
+
+	// Initialize Paseto
+	if err := pkg.InitPaseto(); err != nil {
+		logger.Log.Error("[FATAL]: Could not initialize Paseto: ", err)
+		return
+	}
+	logger.Log.Info("[OK]: Paseto initialized successfully")
+
 	// === Router Setup ===
 
 	router := gin.New()
