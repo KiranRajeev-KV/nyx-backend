@@ -68,6 +68,27 @@ func Auth(c *gin.Context) {
 	c.Next()
 }
 
+func TempAuth(c *gin.Context) {
+	tempToken, err := c.Cookie("temp_token")
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"message": "Access denied.",
+		})
+		logger.Log.ErrorCtx(c, "[REQ-ERROR]: Missing temporary auth token", err)
+		return
+	}
+
+	if !pkg.VerifyTempToken(c, tempToken) {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+			"message": "User is forbidden",
+		})
+		logger.Log.ErrorCtx(c, "[REQ-ERROR]: Temporary token could not be verified", err)
+		return
+	}
+
+	c.Next()
+}
+
 func CheckUserRole(c *gin.Context) {
 	roles := c.GetStringSlice("roles")
 	if len(roles) == 0 {
