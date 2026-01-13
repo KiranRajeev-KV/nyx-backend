@@ -106,3 +106,13 @@ func RevokeRefreshToken(c *gin.Context, email string) {
 	}
 	logger.Log.InfoCtx(c, "[AUTH-INFO]: Successfully revoked Refresh Token in DB")
 }
+
+func ClearTempCookie(c *gin.Context) {
+	if cmd.Env.Environment == "PROD" {
+		c.SetSameSite(http.SameSiteStrictMode)
+	} else {
+		c.SetSameSite(http.SameSiteNoneMode)
+	}
+
+	c.SetCookie("temp_token", "", -1, "/", cmd.Env.CookieDomain, cmd.Env.CookieSecure, true)
+}
