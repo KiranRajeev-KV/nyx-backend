@@ -2,3 +2,4 @@
 bin
 tmp
 dev.log
+*.rsa
