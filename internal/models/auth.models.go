@@ -18,3 +18,13 @@ func (r RegisterUserRequest) Validate() error {
 		v.Field(&r.Password, v.Required, v.Length(8, 128)),
 	)
 }
+
+type VerifyOTPRequest struct {
+	OTP string `json:"otp"`
+}
+
+func (r VerifyOTPRequest) Validate() error {
+	return v.ValidateStruct(&r,
+		v.Field(&r.OTP, v.Required, v.Length(6, 6)),
+	)
+}

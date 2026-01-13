@@ -55,3 +55,30 @@ ON CONFLICT (email)
     otp,
     expires_at,
     attempts;
+
+-- name: GetPendingOnboardingByEmail :one
+SELECT
+  id,
+  name,
+  email,
+  PASSWORD,
+  otp,
+  attempts,
+  verified_at,
+  expires_at
+FROM
+  user_onboarding
+WHERE
+  email = $1
+  AND verified_at IS NULL;
+
+-- name: CreateUser :one
+INSERT INTO users(name, email, password, is_verified)
+  VALUES ($1, $2, $3, $4)
+RETURNING
+  id, name, email, role, trust_score, is_verified, created_at, updated_at;
+
+-- name: DeleteOnboardingByEmail :exec
+DELETE FROM user_onboarding
+WHERE email = $1;
+

@@ -64,6 +64,106 @@ func (q *Queries) CheckRefreshTokenQuery(ctx context.Context, email string) (pgt
 	return refresh_token, err
 }
 
+const createUser = `-- name: CreateUser :one
+INSERT INTO users(name, email, password, is_verified)
+  VALUES ($1, $2, $3, $4)
+RETURNING
+  id, name, email, role, trust_score, is_verified, created_at, updated_at
+`
+
+type CreateUserParams struct {
+	Name       string
+	Email      string
+	Password   string
+	IsVerified bool
+}
+
+type CreateUserRow struct {
+	ID         pgtype.UUID
+	Name       string
+	Email      string
+	Role       UserRole
+	TrustScore pgtype.Int4
+	IsVerified bool
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
+	row := q.db.QueryRow(ctx, createUser,
+		arg.Name,
+		arg.Email,
+		arg.Password,
+		arg.IsVerified,
+	)
+	var i CreateUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Role,
+		&i.TrustScore,
+		&i.IsVerified,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const deleteOnboardingByEmail = `-- name: DeleteOnboardingByEmail :exec
+DELETE FROM user_onboarding
+WHERE email = $1
+`
+
+func (q *Queries) DeleteOnboardingByEmail(ctx context.Context, email string) error {
+	_, err := q.db.Exec(ctx, deleteOnboardingByEmail, email)
+	return err
+}
+
+const getPendingOnboardingByEmail = `-- name: GetPendingOnboardingByEmail :one
+SELECT
+  id,
+  name,
+  email,
+  PASSWORD,
+  otp,
+  attempts,
+  verified_at,
+  expires_at
+FROM
+  user_onboarding
+WHERE
+  email = $1
+  AND verified_at IS NULL
+`
+
+type GetPendingOnboardingByEmailRow struct {
+	ID         int32
+	Name       string
+	Email      string
+	Password   string
+	Otp        string
+	Attempts   pgtype.Int4
+	VerifiedAt pgtype.Timestamptz
+	ExpiresAt  pgtype.Timestamptz
+}
+
+func (q *Queries) GetPendingOnboardingByEmail(ctx context.Context, email string) (GetPendingOnboardingByEmailRow, error) {
+	row := q.db.QueryRow(ctx, getPendingOnboardingByEmail, email)
+	var i GetPendingOnboardingByEmailRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Password,
+		&i.Otp,
+		&i.Attempts,
+		&i.VerifiedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
 const revokeRefreshTokenQuery = `-- name: RevokeRefreshTokenQuery :one
 UPDATE
   users

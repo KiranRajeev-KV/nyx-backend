@@ -1,10 +1,14 @@
 package api
 
-import "github.com/gin-gonic/gin"
+import (
+	mw "github.com/KiranRajeev-KV/nyx-backend/internal/middleware"
+	"github.com/gin-gonic/gin"
+)
 
 func AuthRoutes(router *gin.RouterGroup) {
 	auth := router.Group("/auth")
 	{
 		auth.POST("/register", RegisterUser)
+		auth.POST("/verify-otp", mw.TempAuth, VerifyOTP)
 	}
 }
