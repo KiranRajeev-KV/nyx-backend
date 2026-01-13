@@ -51,6 +51,18 @@ tasks:
       - ./bin/nyx-backend
 
   # ===== Database =====
+  start:
+    desc: "Start docker containers (PostgreSQL and Drizzle Gateway)"
+    cmds:
+      - docker compose start
+      - echo "[OK] DB & Drizzle Gateway started"
+
+  stop:
+    desc: "Stop docker containers (PostgreSQL and Drizzle Gateway)"
+    cmds:
+      - docker compose stop
+      - echo "[OK] DB & Drizzle Gateway stopped"
+
   docker:up:
     desc: "Start PostgreSQL and Drizzle Gateway containers"
     cmds:
