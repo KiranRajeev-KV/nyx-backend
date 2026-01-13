@@ -120,6 +120,37 @@ func (q *Queries) DeleteOnboardingByEmail(ctx context.Context, email string) err
 	return err
 }
 
+const fetchUserSession = `-- name: FetchUserSession :one
+SELECT
+  id,
+  name,
+  email,
+  ROLE
+FROM
+  users
+WHERE
+  email = $1
+`
+
+type FetchUserSessionRow struct {
+	ID    pgtype.UUID
+	Name  string
+	Email string
+	Role  UserRole
+}
+
+func (q *Queries) FetchUserSession(ctx context.Context, email string) (FetchUserSessionRow, error) {
+	row := q.db.QueryRow(ctx, fetchUserSession, email)
+	var i FetchUserSessionRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Role,
+	)
+	return i, err
+}
+
 const getPendingOnboardingByEmail = `-- name: GetPendingOnboardingByEmail :one
 SELECT
   id,

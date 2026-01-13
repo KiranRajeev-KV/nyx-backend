@@ -108,3 +108,13 @@ SET
 WHERE
   id = $2;
 
+-- name: FetchUserSession :one
+SELECT
+  id,
+  name,
+  email,
+  ROLE
+FROM
+  users
+WHERE
+  email = $1;

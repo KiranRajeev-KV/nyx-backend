@@ -314,3 +314,55 @@ func LoginUser(c *gin.Context) {
 	})
 	logger.Log.SuccessCtx(c)
 }
+
+func LogoutUser(c *gin.Context) {
+	pkg.NullifyCookies(c)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Logout successful.",
+	})
+	logger.Log.SuccessCtx(c)
+}
+
+func FetchUserSession(c *gin.Context) {
+	email, ok := pkg.GetEmail(c, "SESSION")
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, err := cmd.DBPool.Acquire(ctx)
+	if pkg.HandleDbAcquireErr(c, err, "SESSION") {
+		return
+	}
+	defer conn.Release()
+
+	q := db.New(conn)
+
+	result, err := q.FetchUserSession(ctx, email)
+	if err == pgx.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{
+			"message": "No session found for user",
+		})
+		logger.Log.WarnCtx(c, "[SESSION-WARN]: User might deleted but cookies exist")
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later.",
+		})
+		logger.Log.ErrorCtx(c, "[SESSION-ERROR]: Failed to fetch user session", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "User session obtained successfully",
+		"name":    result.Name,
+		"email":   result.Email,
+		"role":    result.Role,
+		"id":      result.ID.String(),
+	})
+	logger.Log.SuccessCtx(c)
+}
