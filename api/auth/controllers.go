@@ -43,10 +43,10 @@ func RegisterUser(c *gin.Context) {
 	defer cancel()
 
 	tx, err := cmd.DBPool.Begin(ctx)
-	if pkg.HandleDbTxnErr(c, err, "AUTH") {
+	if pkg.HandleDbTxnErr(c, err, "REGISTER") {
 		return
 	}
-	defer pkg.RollbackTx(c, tx, ctx, "AUTH")
+	defer pkg.RollbackTx(c, tx, ctx, "REGISTER")
 
 	q := db.New(tx)
 
@@ -56,14 +56,14 @@ func RegisterUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Oops! Something happened. Please try again later.",
 		})
-		logger.Log.ErrorCtx(c, "[AUTH-ERROR]: Failed to check existing email", err)
+		logger.Log.ErrorCtx(c, "[REGISTER-ERROR]: Failed to check existing email", err)
 		return
 	}
 	if exists {
 		c.JSON(http.StatusConflict, gin.H{
 			"message": "Email is already registered",
 		})
-		logger.Log.InfoCtx(c, "[AUTH-INFO]: Registration attempt with existing email")
+		logger.Log.InfoCtx(c, "[REGISTER-INFO]: Registration attempt with existing email")
 		return
 	}
 
@@ -73,11 +73,11 @@ func RegisterUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Oops! Something happened. Please try again later.",
 		})
-		logger.Log.ErrorCtx(c, "[AUTH-ERROR]: Failed to check pending onboarding", err)
+		logger.Log.ErrorCtx(c, "[REGISTER-ERROR]: Failed to check pending onboarding", err)
 		return
 	}
 	if pending {
-		logger.Log.InfoCtx(c, "[AUTH-INFO]: Updating OTP for pending onboarding")
+		logger.Log.InfoCtx(c, "[REGISTER-INFO]: Updating OTP for pending onboarding")
 	}
 
 	// generate OTP + expiry
@@ -86,7 +86,7 @@ func RegisterUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Oops! Something happened. Please try again later.",
 		})
-		logger.Log.ErrorCtx(c, "[AUTH-ERROR]: Unable to generate OTP", err)
+		logger.Log.ErrorCtx(c, "[REGISTER-ERROR]: Unable to generate OTP", err)
 		return
 	}
 	expiry := time.Now().Add(5 * time.Minute)
@@ -97,7 +97,7 @@ func RegisterUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Oops! Something happened. Please try again later.",
 		})
-		logger.Log.ErrorCtx(c, "[AUTH-ERROR]: Failed to hash password", err)
+		logger.Log.ErrorCtx(c, "[REGISTER-ERROR]: Failed to hash password", err)
 		return
 	}
 
@@ -116,13 +116,13 @@ func RegisterUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Oops! Something happened. Please try again later.",
 		})
-		logger.Log.ErrorCtx(c, "[AUTH-ERROR]: Failed to upsert user onboarding", err)
+		logger.Log.ErrorCtx(c, "[REGISTER-ERROR]: Failed to upsert user onboarding", err)
 		return
 	}
 
 	// commit transaction
 	err = tx.Commit(ctx)
-	if pkg.HandleDbTxnCommitErr(c, err, "AUTH") {
+	if pkg.HandleDbTxnCommitErr(c, err, "REGISTER") {
 		return
 	}
 
@@ -135,10 +135,10 @@ func RegisterUser(c *gin.Context) {
 	// you can use otpSlice to send the actual code via your emailer
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":   "Registration successful, please verify your email with the OTP sent.",
+		"message":   "Registration successful, please verify your email using the OTP.",
 		"expiry_at": expiry,
 	})
-	logger.Log.InfoCtx(c, "[AUTH-SUCCESS]: User onboarded, OTP sent")
+	logger.Log.SuccessCtx(c)
 }
 
 // FLOW: OTP Verification
