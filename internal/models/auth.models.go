@@ -28,3 +28,15 @@ func (r VerifyOTPRequest) Validate() error {
 		v.Field(&r.OTP, v.Required, v.Length(6, 6)),
 	)
 }
+
+type LoginUserRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (r LoginUserRequest) Validate() error {
+	return v.ValidateStruct(&r,
+		v.Field(&r.Email, v.Required, is.Email),
+		v.Field(&r.Password, v.Required, v.Length(8, 128)),
+	)
+}
