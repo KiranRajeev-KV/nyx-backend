@@ -15,6 +15,8 @@ import (
 	mw "github.com/KiranRajeev-KV/nyx-backend/internal/middleware"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
 	"github.com/gin-gonic/gin"
+
+	apiAuth "github.com/KiranRajeev-KV/nyx-backend/api/auth"
 )
 
 func StartServer() {
@@ -78,6 +80,10 @@ func StartServer() {
 		})
 		logger.Log.SuccessCtx(c)
 	})
+
+	v1 := router.Group("/api/v1")
+
+	apiAuth.AuthRoutes(v1)
 
 	// === Server Setup ===
 
