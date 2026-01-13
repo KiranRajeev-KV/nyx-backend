@@ -14,6 +14,7 @@ import (
 	"github.com/KiranRajeev-KV/nyx-backend/internal/logger"
 	mw "github.com/KiranRajeev-KV/nyx-backend/internal/middleware"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
 	apiAuth "github.com/KiranRajeev-KV/nyx-backend/api/auth"
@@ -70,7 +71,20 @@ func StartServer() {
 
 	// === Router Setup ===
 
+	config := cors.Config{
+		AllowOrigins:              []string{cmd.Env.ClientDomain},
+		AllowWildcard:             true,
+		AllowMethods:              []string{"GET", "POST", "DELETE", "PUT", "PATCH", "OPTIONS"},
+		AllowHeaders:              []string{"X-Csrf-Token", "Origin", "Content-Type"},
+		AllowCredentials:          true,
+		OptionsResponseStatusCode: 204,
+		MaxAge:                    12 * time.Hour,
+	}
+
 	router := gin.New()
+
+	// middlewares
+	router.Use(cors.New(config))
 	router.Use(pkg.TagRequestWithId)
 	router.Use(mw.LogMiddleware(logger.Log))
 
