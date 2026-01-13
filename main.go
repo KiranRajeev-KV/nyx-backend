@@ -11,34 +11,56 @@ import (
 	"time"
 
 	"github.com/KiranRajeev-KV/nyx-backend/cmd"
+	"github.com/KiranRajeev-KV/nyx-backend/internal/logger"
+	mw "github.com/KiranRajeev-KV/nyx-backend/internal/middleware"
+	"github.com/KiranRajeev-KV/nyx-backend/pkg"
 	"github.com/gin-gonic/gin"
 )
 
 func StartServer() {
 	gin.SetMode(gin.ReleaseMode)
 
-	router := gin.Default()
+	// === Init ===
 
-	fmt.Println("Starting server on port 8080...")
+	cfg, err := cmd.LoadConfig()
+	if err != nil {
+		fmt.Println("[FATAL] Could not load EnvConfig: ", err)
+		panic(err)
+
+	}
+	fmt.Println("[OK]: EnvConfig loaded successfully")
+
+	cmd.Env = cfg
+
+	// Initialize Logger
+	log, err := logger.InitLogger(cfg.Environment)
+	if err != nil {
+		fmt.Println("[FATAL]: Could not initialize Logger: ", err)
+		panic(err)
+	}
+	logger.Log = log
+
+	// Initialize DB Pool
+	if err := cmd.InitDBPool(); err != nil {
+		logger.Log.Error("[FATAL]: Could not initialize DB Pool: ", err)
+		return
+	}
+	logger.Log.Info("[OK]: DB Pool initialized successfully")
+
+	// === Router Setup ===
+
+	router := gin.New()
+	router.Use(pkg.TagRequestWithId)
+	router.Use(mw.LogMiddleware(logger.Log))
+
 	router.GET("/test", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "Server is running!",
 		})
+		logger.Log.SuccessCtx(c)
 	})
 
-	cfg, err := cmd.LoadConfig()
-	if err != nil {
-		fmt.Println("Error loading config:", err)
-		return
-	}
-
-	cmd.Env = cfg
-
-	// Initialize DB Pool
-	if err := cmd.InitDBPool(); err != nil {
-		fmt.Println("Error initializing database pool:", err)
-		return
-	}
+	// === Server Setup ===
 
 	server := &http.Server{
 		Addr:    ":" + strconv.Itoa(cmd.Env.Port),
@@ -46,9 +68,9 @@ func StartServer() {
 	}
 
 	go func() {
-		fmt.Println("[OK]: Start the server on port " + ":" + strconv.Itoa(cmd.Env.Port))
+		logger.Log.Info("[OK]: Starting server on port " + strconv.Itoa(cmd.Env.Port))
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fmt.Println("could not listen on port "+":"+strconv.Itoa(cmd.Env.Port), err)
+			logger.Log.Error("[FATAL]: Could not start server: ", err)
 		} // Blocking in nature
 	}()
 
@@ -56,13 +78,13 @@ func StartServer() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	fmt.Println("[OK]: Shutting down server...")
+	logger.Log.Info("[OK]: Shutting down server...")
 
 	// 10 seconds timeout for the server to shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
-		fmt.Println("[OK]: Server forced to shutdown", err)
+		logger.Log.Error("[FATAL]: Server forced to shutdown: ", err)
 	}
 }
 
