@@ -2,7 +2,9 @@ package pkg
 
 import (
 	"fmt"
+	"net/http"
 
+	"github.com/KiranRajeev-KV/nyx-backend/internal/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/segmentio/ksuid"
 )
@@ -13,10 +15,17 @@ func TagRequestWithId(c *gin.Context) {
 	c.Next()
 }
 
-func GrabRequestId(c *gin.Context) string {
-	reqId, ok := c.Get("request_id")
-	if !ok {
-		return "missing-id"
+func GetEmail(c *gin.Context, route string) (string, bool) {
+	email := c.GetString("email")
+	if email == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later.",
+		})
+		msg := fmt.Sprintf("[%s-FATAL]: No email after crossing auth middleware", route)
+		logger.Log.FatalCtx(c, msg, nil)
+
+		return "", false
 	}
-	return fmt.Sprintf("%v", reqId)
+
+	return email, true
 }

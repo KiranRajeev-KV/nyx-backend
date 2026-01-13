@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/KiranRajeev-KV/nyx-backend/internal/logger"
-	"github.com/KiranRajeev-KV/nyx-backend/pkg"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 )
@@ -33,7 +32,7 @@ func LogMiddleware(l *logger.LoggerService) gin.HandlerFunc {
 		queryParamsStr := fmt.Sprintf("%v", queryParams)
 
 		l.Logger.WithLevel(zerolog.InfoLevel).
-			Str("req-id", pkg.GrabRequestId(c)).
+			Str("req-id", logger.GrabRequestId(c)).
 			Str("route", c.FullPath()).
 			Str("method", c.Request.Method).
 			Int("status", c.Writer.Status()).

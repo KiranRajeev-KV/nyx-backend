@@ -1,11 +1,11 @@
 meta {
-  name: test
+  name: logout
   type: http
-  seq: 2
+  seq: 4
 }
 
 get {
-  url: www.localhost:8080/test
+  url: {{BASE_URL}}/auth/logout
   body: none
   auth: inherit
 }

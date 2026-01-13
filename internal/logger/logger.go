@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/KiranRajeev-KV/nyx-backend/pkg"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 )
@@ -157,7 +156,7 @@ func (l *LoggerService) enrich(c *gin.Context, e *zerolog.Event) *zerolog.Event 
 	queryParamsStr := fmt.Sprintf("%v", queryParams)
 
 	return e.
-		Str("req-id", pkg.GrabRequestId(c)).
+		Str("req-id", GrabRequestId(c)).
 		Str("route", c.FullPath()).
 		Str("method", c.Request.Method).
 		Str("path-params", pathParamsStr).
@@ -227,4 +226,12 @@ func (l *LoggerService) Error(msg string, err error) {
 
 func (l *LoggerService) Fatal(msg string, err error) {
 	l.Logger.WithLevel(zerolog.FatalLevel).Err(err).Msg(msg)
+}
+
+func GrabRequestId(c *gin.Context) string {
+	reqId, ok := c.Get("request_id")
+	if !ok {
+		return "missing-id"
+	}
+	return fmt.Sprintf("%v", reqId)
 }

@@ -12,9 +12,12 @@ import (
 )
 
 type EnvConfig struct {
-	Environment string `koanf:"ENVIRONMENT"`
-	Port        int    `koanf:"PORT"`
-	DatabaseURL string `koanf:"GOOSE_DBSTRING"`
+	Environment  string `koanf:"ENVIRONMENT"`
+	Port         int    `koanf:"PORT"`
+	DatabaseURL  string `koanf:"GOOSE_DBSTRING"`
+	ClientDomain string `koanf:"CLIENT_DOMAIN"`
+	CookieDomain string `koanf:"COOKIE_DOMAIN"`
+	CookieSecure bool   `koanf:"COOKIE_SECURE"`
 }
 
 var k = koanf.New(".")
