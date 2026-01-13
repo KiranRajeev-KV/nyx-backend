@@ -12,12 +12,15 @@ import (
 
 	"github.com/KiranRajeev-KV/nyx-backend/cmd"
 	"github.com/KiranRajeev-KV/nyx-backend/internal/logger"
-	"github.com/KiranRajeev-KV/nyx-backend/internal/middleware"
+	mw "github.com/KiranRajeev-KV/nyx-backend/internal/middleware"
+	"github.com/KiranRajeev-KV/nyx-backend/pkg"
 	"github.com/gin-gonic/gin"
 )
 
 func StartServer() {
 	gin.SetMode(gin.ReleaseMode)
+
+	// === Init ===
 
 	cfg, err := cmd.LoadConfig()
 	if err != nil {
@@ -29,6 +32,7 @@ func StartServer() {
 
 	cmd.Env = cfg
 
+	// Initialize Logger
 	log, err := logger.InitLogger(cfg.Environment)
 	if err != nil {
 		fmt.Println("[FATAL]: Could not initialize Logger: ", err)
@@ -43,8 +47,11 @@ func StartServer() {
 	}
 	logger.Log.Info("[OK]: DB Pool initialized successfully")
 
+	// === Router Setup ===
+
 	router := gin.Default()
-	router.Use(middleware.LogMiddleware(logger.Log))
+	router.Use(pkg.TagRequestWithId)
+	router.Use(mw.LogMiddleware(logger.Log))
 
 	router.GET("/test", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -52,6 +59,8 @@ func StartServer() {
 		})
 		logger.Log.InfoCtx(c, "[TEST]: Test endpoint hit")
 	})
+
+	// === Server Setup ===
 
 	server := &http.Server{
 		Addr:    ":" + strconv.Itoa(cmd.Env.Port),
