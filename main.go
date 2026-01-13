@@ -49,7 +49,7 @@ func StartServer() {
 
 	// === Router Setup ===
 
-	router := gin.Default()
+	router := gin.New()
 	router.Use(pkg.TagRequestWithId)
 	router.Use(mw.LogMiddleware(logger.Log))
 
@@ -57,7 +57,7 @@ func StartServer() {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "Server is running!",
 		})
-		logger.Log.InfoCtx(c, "[TEST]: Test endpoint hit")
+		logger.Log.SuccessCtx(c)
 	})
 
 	// === Server Setup ===
