@@ -34,7 +34,12 @@ var (
 	SignKey   paseto.V4AsymmetricSecretKey
 )
 
-type Roles []string
+type Role string
+
+const (
+	RoleUser  Role = "USER"
+	RoleAdmin Role = "ADMIN"
+)
 
 func InitPaseto() error {
 	privateKeyBinary, err := os.ReadFile(privateKeyPath)
@@ -62,7 +67,7 @@ func InitPaseto() error {
 	return nil
 }
 
-func CreateAuthToken(userId, email string, roles Roles) (string, error) {
+func CreateAuthToken(userId, email string, role db.UserRole) (string, error) {
 	token := paseto.NewToken()
 
 	token.SetJti(email)
@@ -72,13 +77,13 @@ func CreateAuthToken(userId, email string, roles Roles) (string, error) {
 	token.SetNotBefore(time.Now())
 	token.SetExpiration(time.Now().Add(AuthTokenValidTime))
 	token.SetSubject("access_token")
-	token.Set("roles", roles)
+	token.Set("role", role)
 
 	signed := token.V4Sign(SignKey, nil)
 	return signed, nil
 }
 
-func CreateRefreshToken(userId, email string, roles Roles) (string, error) {
+func CreateRefreshToken(userId, email string, role db.UserRole) (string, error) {
 
 	token := paseto.NewToken()
 	token.SetJti(email)
@@ -88,7 +93,7 @@ func CreateRefreshToken(userId, email string, roles Roles) (string, error) {
 	token.SetNotBefore(time.Now())
 	token.SetExpiration(time.Now().Add(RefreshTokenValidTime))
 	token.SetSubject("refresh_token")
-	token.Set("roles", roles)
+	token.Set("role", role)
 
 	signed := token.V4Sign(SignKey, nil)
 	return signed, nil
@@ -136,29 +141,22 @@ func VerifyTokens(c *gin.Context, authToken, refreshToken string) bool {
 	authData := parsedAuthToken.Claims()
 	refData := parsedRefToken.Claims()
 
-	authRoles := ParseRolesFromClaims(authData)
-	refRoles := ParseRolesFromClaims(refData)
+	authRole := authData["role"].(string)
+	refRole := refData["role"].(string)
 
 	// Verification conditions
 	c1 := authData["aud"] != refData["aud"]
 	c2 := authData["jti"] != refData["jti"]
-	c3 := len(authRoles) != len(refRoles)
+	c3 := authRole != refRole
 
 	if c1 || c2 || c3 {
 		return false
 	}
 
-	// Check roles are identical in both tokens
-	for i := range authRoles {
-		if authRoles[i] != refRoles[i] {
-			return false
-		}
-	}
-
 	// Setting up variables in *gin.Context for passing around in handlers
 	c.Set("userId", refData["aud"])
 	c.Set("email", refData["jti"])
-	c.Set("roles", refRoles)
+	c.Set("role", refRole)
 
 	return true
 }
@@ -184,8 +182,8 @@ func VerifyRefreshToken(c *gin.Context, refreshToken string) (*paseto.Token, err
 
 	refreshClaims := parsedRefToken.Claims()
 	email := refreshClaims["jti"].(string)
-	roles := ParseRolesFromClaims(refreshClaims)
-	c.Set("roles", roles)
+	role := refreshClaims["role"].(string)
+	c.Set("role", role)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -220,13 +218,4 @@ func VerifyRefreshToken(c *gin.Context, refreshToken string) (*paseto.Token, err
 	}
 
 	return validToken, nil
-}
-
-func ParseRolesFromClaims(claims map[string]interface{}) []string {
-	raw, _ := claims["roles"].([]interface{})
-	roles := make([]string, 0, len(raw))
-	for _, r := range raw {
-		roles = append(roles, fmt.Sprintf("%v", r))
-	}
-	return roles
 }

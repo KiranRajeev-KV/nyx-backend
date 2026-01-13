@@ -164,6 +164,53 @@ func (q *Queries) GetPendingOnboardingByEmail(ctx context.Context, email string)
 	return i, err
 }
 
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT
+  id,
+  name,
+  email,
+  PASSWORD,
+  ROLE,
+  trust_score,
+  is_verified,
+  created_at,
+  updated_at
+FROM
+  users
+WHERE
+  email = $1
+  AND is_verified = TRUE
+`
+
+type GetUserByEmailRow struct {
+	ID         pgtype.UUID
+	Name       string
+	Email      string
+	Password   string
+	Role       UserRole
+	TrustScore pgtype.Int4
+	IsVerified bool
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+}
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
+	var i GetUserByEmailRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Password,
+		&i.Role,
+		&i.TrustScore,
+		&i.IsVerified,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const revokeRefreshTokenQuery = `-- name: RevokeRefreshTokenQuery :one
 UPDATE
   users
@@ -180,6 +227,26 @@ func (q *Queries) RevokeRefreshTokenQuery(ctx context.Context, email string) (st
 	row := q.db.QueryRow(ctx, revokeRefreshTokenQuery, email)
 	err := row.Scan(&email)
 	return email, err
+}
+
+const setUserRefreshToken = `-- name: SetUserRefreshToken :exec
+UPDATE
+  users
+SET
+  refresh_token = $1,
+  updated_at = NOW()
+WHERE
+  id = $2
+`
+
+type SetUserRefreshTokenParams struct {
+	RefreshToken pgtype.Text
+	ID           pgtype.UUID
+}
+
+func (q *Queries) SetUserRefreshToken(ctx context.Context, arg SetUserRefreshTokenParams) error {
+	_, err := q.db.Exec(ctx, setUserRefreshToken, arg.RefreshToken, arg.ID)
+	return err
 }
 
 const upsertUserOnboarding = `-- name: UpsertUserOnboarding :one

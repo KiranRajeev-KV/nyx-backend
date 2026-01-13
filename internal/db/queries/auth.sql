@@ -82,3 +82,29 @@ RETURNING
 DELETE FROM user_onboarding
 WHERE email = $1;
 
+-- name: GetUserByEmail :one
+SELECT
+  id,
+  name,
+  email,
+  PASSWORD,
+  ROLE,
+  trust_score,
+  is_verified,
+  created_at,
+  updated_at
+FROM
+  users
+WHERE
+  email = $1
+  AND is_verified = TRUE;
+
+-- name: SetUserRefreshToken :exec
+UPDATE
+  users
+SET
+  refresh_token = $1,
+  updated_at = NOW()
+WHERE
+  id = $2;
+

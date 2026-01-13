@@ -2,8 +2,8 @@ package mw
 
 import (
 	"net/http"
-	"slices"
 
+	db "github.com/KiranRajeev-KV/nyx-backend/internal/db/gen"
 	"github.com/KiranRajeev-KV/nyx-backend/internal/logger"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
 	"github.com/gin-gonic/gin"
@@ -51,10 +51,10 @@ func Auth(c *gin.Context) {
 		refreshTokenClaims := validToken.Claims()
 		userId, _ := refreshTokenClaims["aud"].(string)
 		email, _ := refreshTokenClaims["jti"].(string)
-		roles := pkg.ParseRolesFromClaims(refreshTokenClaims)
+		role := refreshTokenClaims["role"].(db.UserRole)
 
 		// Creating and setting auth token, so it can be used for future requests
-		authToken, err := pkg.CreateAuthToken(userId, email, roles)
+		authToken, err := pkg.CreateAuthToken(userId, email, role)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 				"message": "Oops! Something happened. Please try again later.",
@@ -90,13 +90,13 @@ func TempAuth(c *gin.Context) {
 }
 
 func CheckUserRole(c *gin.Context) {
-	roles := c.GetStringSlice("roles")
-	if len(roles) == 0 {
-		logger.Log.WarnCtx(c, "[ROLE-ERROR]: Could not extract roles from context")
+	role, exists := c.Get("role")
+	if !exists {
+		logger.Log.WarnCtx(c, "[ROLE-ERROR]: Could not extract role from context")
 		return
 	}
-	// if it contains USER role, then allow
-	if slices.Contains(roles, "USER") {
+
+	if role == "USER" {
 		c.Next()
 		return
 	}
@@ -107,13 +107,13 @@ func CheckUserRole(c *gin.Context) {
 }
 
 func CheckAdminRole(c *gin.Context) {
-	roles := c.GetStringSlice("roles")
-	if len(roles) == 0 {
-		logger.Log.WarnCtx(c, "[ROLE-ERROR]: Could not extract roles from context")
+	role, exists := c.Get("role")
+	if !exists {
+		logger.Log.WarnCtx(c, "[ROLE-ERROR]: Could not extract role from context")
 		return
 	}
-	// if it contains ADMIN role, then allow
-	if slices.Contains(roles, "ADMIN") {
+
+	if role == "ADMIN" {
 		c.Next()
 		return
 	}
