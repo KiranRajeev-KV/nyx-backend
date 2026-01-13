@@ -242,3 +242,75 @@ func VerifyOTP(c *gin.Context) {
 	})
 	logger.Log.SuccessCtx(c)
 }
+
+func LoginUser(c *gin.Context) {
+	req, ok := pkg.ValidateRequest[models.LoginUserRequest](c)
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	q := db.New(cmd.DBPool)
+
+	// fetch user by email
+	user, err := q.GetUserByEmail(ctx, req.Email)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"message": "Invalid email or password.",
+		})
+		logger.Log.InfoCtx(c, "[LOGIN-INFO]: Invalid login attempt - email not found")
+		return
+	}
+
+	// verify password
+	if err := pkg.CompareHash(user.Password, req.Password); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"message": "Invalid email or password.",
+		})
+		logger.Log.InfoCtx(c, "[LOGIN-INFO]: Invalid login attempt - wrong password")
+		return
+	}
+
+	// create paseto tokens
+	accessToken, err := pkg.CreateAuthToken(user.ID.String(), user.Email, user.Role)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later.",
+		})
+		logger.Log.ErrorCtx(c, "[LOGIN-ERROR]: Failed to create auth token", err)
+		return
+	}
+
+	refreshToken, err := pkg.CreateRefreshToken(user.ID.String(), user.Email, user.Role)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later.",
+		})
+		logger.Log.ErrorCtx(c, "[LOGIN-ERROR]: Failed to create refresh token", err)
+		return
+	}
+
+	// set refresh token in db
+	err = q.SetUserRefreshToken(ctx, db.SetUserRefreshTokenParams{
+		ID:           user.ID,
+		RefreshToken: pgtype.Text{String: refreshToken, Valid: true},
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later.",
+		})
+		logger.Log.ErrorCtx(c, "[LOGIN-ERROR]: Failed to set refresh token in DB", err)
+		return
+	}
+
+	// set tokens in cookies
+	pkg.SetAuthCookie(c, accessToken)
+	pkg.SetRefreshCookie(c, refreshToken)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Login successful.",
+	})
+	logger.Log.SuccessCtx(c)
+}
