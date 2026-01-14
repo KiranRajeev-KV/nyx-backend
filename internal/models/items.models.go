@@ -31,3 +31,26 @@ func (r CreateItemRequest) Validate() (errorMsg string, err error) {
 	)
 	return "Invalid request format for creating an item", err
 }
+
+type UpdateItemRequest struct {
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
+	Location    *string `json:"location_description"`
+	TimeAt      *string `json:"time_at"`
+	Latitude    *string `json:"latitude"`
+	Longitude   *string `json:"longitude"`
+	HubId       *string `json:"hub_id"`
+}
+
+func (r UpdateItemRequest) Validate() (errorMsg string, err error) {
+	err = v.ValidateStruct(&r,
+		v.Field(&r.Name, v.When(r.Name != nil, v.Length(3, 100).Error("Name must be between 3 and 100 characters"))),
+		v.Field(&r.Description, v.When(r.Description != nil, v.Length(10, 500).Error("Description must be between 10 and 500 characters"))),
+		v.Field(&r.Location, v.When(r.Location != nil, v.Length(5, 200).Error("Location must be between 5 and 200 characters"))),
+		v.Field(&r.HubId, v.When(r.HubId != nil, is.UUID.Error("Hub ID must be a valid UUID"))),
+		v.Field(&r.TimeAt),
+		v.Field(&r.Latitude),
+		v.Field(&r.Longitude),
+	)
+	return "Invalid request format for updating an item", err
+}
