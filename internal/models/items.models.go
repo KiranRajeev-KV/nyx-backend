@@ -17,10 +17,10 @@ type CreateItemRequest struct {
 	Longitude   string  `json:"longitude"`
 }
 
-func (r CreateItemRequest) Validate() error {
-	return v.ValidateStruct(&r,
+func (r CreateItemRequest) Validate() (errorMsg string, err error) {
+	err = v.ValidateStruct(&r,
 		v.Field(&r.IsAnonymous, v.When(r.Type == "LOST", v.In(false).Error("LOST items cannot be requested anonymously"))),
-		v.Field(&r.HubId, v.When(r.Type == "FOUND", v.Required.Error("Hub ID is required"), is.UUID.Error("Hub ID must be a valid UUID"))),
+		v.Field(&r.HubId, v.When(r.Type == "FOUND", v.Required.Error("Hub ID is required for FOUND items"), is.UUID.Error("Hub ID must be a valid UUID"))),
 		v.Field(&r.Name, v.Required.Error("Name is required"), v.Length(3, 100).Error("Name must be between 3 and 100 characters")),
 		v.Field(&r.Description, v.Required.Error("Description is required"), v.Length(10, 500).Error("Description must be between 10 and 500 characters")),
 		v.Field(&r.Type, v.Required.Error("Type is required"), v.In("LOST", "FOUND").Error("Type must be either LOST or FOUND")),
@@ -29,4 +29,5 @@ func (r CreateItemRequest) Validate() error {
 		v.Field(&r.Latitude),
 		v.Field(&r.Longitude),
 	)
+	return "Invalid request format for creating an item", err
 }
