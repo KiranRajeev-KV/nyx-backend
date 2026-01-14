@@ -528,3 +528,35 @@ func (q *Queries) UpdateItemById(ctx context.Context, db DBTX, arg UpdateItemByI
 	)
 	return i, err
 }
+
+const updateItemStatusById = `-- name: UpdateItemStatusById :one
+UPDATE
+    items
+SET
+    status = $2,
+    updated_at = NOW()
+WHERE
+    id = $1
+RETURNING
+    id,
+    status,
+    updated_at
+`
+
+type UpdateItemStatusByIdParams struct {
+	ID     uuid.UUID  `json:"id"`
+	Status ItemStatus `json:"status"`
+}
+
+type UpdateItemStatusByIdRow struct {
+	ID        uuid.UUID          `json:"id"`
+	Status    ItemStatus         `json:"status"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) UpdateItemStatusById(ctx context.Context, db DBTX, arg UpdateItemStatusByIdParams) (UpdateItemStatusByIdRow, error) {
+	row := db.QueryRow(ctx, updateItemStatusById, arg.ID, arg.Status)
+	var i UpdateItemStatusByIdRow
+	err := row.Scan(&i.ID, &i.Status, &i.UpdatedAt)
+	return i, err
+}
