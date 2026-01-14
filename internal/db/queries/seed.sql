@@ -14,7 +14,7 @@ INSERT INTO items (
     user_id, hub_id, name, description, type, status, 
     location_description, latitude, longitude, time_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+VALUES ($1, sqlc.narg('hub_id'), $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING id;
 
 -- name: SeedClaim :one
@@ -25,3 +25,6 @@ RETURNING id;
 -- name: SeedAuditLog :exec
 INSERT INTO audit_logs (actor_id, action, target_type, target_id)
 VALUES ($1, $2, $3, $4);
+
+-- name: TruncateTables :exec
+TRUNCATE TABLE audit_logs, claims, items, hubs, users, user_onboarding RESTART IDENTITY CASCADE;

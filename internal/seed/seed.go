@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"math/rand"
 	"os"
@@ -11,10 +12,15 @@ import (
 	db "github.com/KiranRajeev-KV/nyx-backend/internal/db/gen"
 	"github.com/KiranRajeev-KV/nyx-backend/internal/logger"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func main() {
+	truncate := flag.Bool("truncate", false, "Truncate all tables before seeding")
+	seedOnly := flag.Bool("seed", false, "Seed the database (default true if no truncate)")
+	flag.Parse()
+
 	// Load config
 	cfg, err := cmd.LoadConfig()
 	if err != nil {
@@ -25,7 +31,7 @@ func main() {
 
 	// Check Environment
 	if cfg.Environment != "DEV" {
-		fmt.Println("❌ Seeding is only allowed in DEV environment.")
+		fmt.Println("❌ Seeding/Truncating is only allowed in DEV environment.")
 		os.Exit(1)
 	}
 
@@ -44,11 +50,25 @@ func main() {
 	}
 	defer cmd.DBPool.Close()
 
-	// Run Seeder
+	ctx := context.Background()
 	seeder := NewSeeder()
-	if err := seeder.SeedDB(context.Background()); err != nil {
-		logger.Log.Error("[FATAL]: Seeding failed: ", err)
-		os.Exit(1)
+
+	if *truncate {
+		if err := seeder.TruncateDB(ctx); err != nil {
+			logger.Log.Error("[FATAL]: Truncate failed: ", err)
+			os.Exit(1)
+		}
+	}
+
+	// If truncate is false, we default to seed. If truncate is true, we only seed if seedOnly is true or it's implicit?
+	// Let's make it simple: if --truncate is passed, it truncates. If --seed is passed (or nothing), it seeds.
+	// Actually, usually one might want to truncate AND then seed.
+
+	if *seedOnly || !*truncate {
+		if err := seeder.SeedDB(ctx); err != nil {
+			logger.Log.Error("[FATAL]: Seeding failed: ", err)
+			os.Exit(1)
+		}
 	}
 }
 
@@ -60,6 +80,21 @@ func NewSeeder() *Seeder {
 	return &Seeder{
 		queries: db.New(),
 	}
+}
+
+func (s *Seeder) TruncateDB(ctx context.Context) error {
+	fmt.Println("🗑️ Truncating tables...")
+	conn, err := cmd.DBPool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+
+	if err := s.queries.TruncateTables(ctx, conn); err != nil {
+		return err
+	}
+	fmt.Println("✅ Tables truncated successfully!")
+	return nil
 }
 
 func (s *Seeder) SeedDB(ctx context.Context) error {
@@ -103,15 +138,14 @@ func (s *Seeder) SeedDB(ctx context.Context) error {
 	return nil
 }
 
-func (s *Seeder) seedUsers(ctx context.Context) ([]pgtype.UUID, error) {
+func (s *Seeder) seedUsers(ctx context.Context) ([]uuid.UUID, error) {
 	conn, err := cmd.DBPool.Acquire(ctx)
 	if err != nil {
-		logger.Log.Error("[SEED-USERS-ERROR]: Failed to acquire DB connection", err)
 		return nil, err
 	}
 	defer conn.Release()
 
-	var userIDs []pgtype.UUID
+	var userIDs []uuid.UUID
 	password, _ := pkg.Hash("password123")
 
 	users := []struct {
@@ -146,20 +180,19 @@ func (s *Seeder) seedUsers(ctx context.Context) ([]pgtype.UUID, error) {
 		if err != nil {
 			return nil, err
 		}
-		userIDs = append(userIDs, pgtype.UUID{Bytes: id, Valid: true})
+		userIDs = append(userIDs, id)
 	}
 	return userIDs, nil
 }
 
-func (s *Seeder) seedHubs(ctx context.Context) ([]pgtype.UUID, error) {
+func (s *Seeder) seedHubs(ctx context.Context) ([]uuid.UUID, error) {
 	conn, err := cmd.DBPool.Acquire(ctx)
 	if err != nil {
-		logger.Log.Error("[SEED-HUBS-ERROR]: Failed to acquire DB connection", err)
 		return nil, err
 	}
-
 	defer conn.Release()
-	var hubIDs []pgtype.UUID
+
+	var hubIDs []uuid.UUID
 	hubs := []struct {
 		Name      string
 		Address   string
@@ -183,33 +216,33 @@ func (s *Seeder) seedHubs(ctx context.Context) ([]pgtype.UUID, error) {
 		if err != nil {
 			return nil, err
 		}
-		hubIDs = append(hubIDs, pgtype.UUID{Bytes: id, Valid: true})
+		hubIDs = append(hubIDs, id)
 	}
 	return hubIDs, nil
 }
 
-func (s *Seeder) seedItems(ctx context.Context, users []pgtype.UUID, hubs []pgtype.UUID) ([]pgtype.UUID, error) {
+func (s *Seeder) seedItems(ctx context.Context, users []uuid.UUID, hubs []uuid.UUID) ([]uuid.UUID, error) {
 	conn, err := cmd.DBPool.Acquire(ctx)
 	if err != nil {
-		logger.Log.Error("[SEED-ITEMS-ERROR]: Failed to acquire DB connection", err)
 		return nil, err
 	}
 	defer conn.Release()
 
-	var itemIDs []pgtype.UUID
+	var itemIDs []uuid.UUID
 	types := []db.ItemType{db.ItemTypeLOST, db.ItemTypeFOUND}
 	statuses := []db.ItemStatus{db.ItemStatusOPEN, db.ItemStatusPENDINGCLAIM, db.ItemStatusRESOLVED, db.ItemStatusARCHIVED}
 
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		userID := users[rand.Intn(len(users))]
 		hubID := hubs[rand.Intn(len(hubs))]
 		itemType := types[rand.Intn(len(types))]
 		status := statuses[rand.Intn(len(statuses))]
 
-		var currentHubID pgtype.UUID
-		// Ensure FOUND items have a hub, LOST items might not
-		if itemType == db.ItemTypeFOUND || rand.Float32() > 0.5 {
-			currentHubID = hubID
+		var currentHubID uuid.NullUUID
+		if itemType == db.ItemTypeFOUND {
+			currentHubID = uuid.NullUUID{UUID: hubID, Valid: true}
+		} else {
+			currentHubID = uuid.NullUUID{Valid: false}
 		}
 
 		name := fmt.Sprintf("Item %d", i+1)
@@ -220,8 +253,8 @@ func (s *Seeder) seedItems(ctx context.Context, users []pgtype.UUID, hubs []pgty
 		timeAt := time.Now().Add(-time.Duration(rand.Intn(100)) * time.Hour)
 
 		id, err := s.queries.SeedItem(ctx, conn, db.SeedItemParams{
-			UserID:              userID.Bytes,
-			HubID:               currentHubID.Bytes,
+			UserID:              userID,
+			HubID:               currentHubID,
 			Name:                name,
 			Description:         pgtype.Text{String: desc, Valid: true},
 			Type:                itemType,
@@ -234,20 +267,19 @@ func (s *Seeder) seedItems(ctx context.Context, users []pgtype.UUID, hubs []pgty
 		if err != nil {
 			return nil, err
 		}
-		itemIDs = append(itemIDs, pgtype.UUID{Bytes: id, Valid: true})
+		itemIDs = append(itemIDs, id)
 	}
 	return itemIDs, nil
 }
 
-func (s *Seeder) seedClaims(ctx context.Context, items []pgtype.UUID, users []pgtype.UUID) ([]pgtype.UUID, error) {
+func (s *Seeder) seedClaims(ctx context.Context, items []uuid.UUID, users []uuid.UUID) ([]uuid.UUID, error) {
 	conn, err := cmd.DBPool.Acquire(ctx)
 	if err != nil {
-		logger.Log.Error("[SEED-CLAIMS-ERROR]: Failed to acquire DB connection", err)
 		return nil, err
 	}
 	defer conn.Release()
 
-	var claimIDs []pgtype.UUID
+	var claimIDs []uuid.UUID
 	statuses := []db.ClaimStatus{db.ClaimStatusPENDING, db.ClaimStatusAPPROVED, db.ClaimStatusREJECTED}
 
 	for i := 0; i < 15; i++ {
@@ -259,26 +291,24 @@ func (s *Seeder) seedClaims(ctx context.Context, items []pgtype.UUID, users []pg
 		score := 0.5 + rand.Float64()*0.5 // 0.5 - 1.0
 
 		id, err := s.queries.SeedClaim(ctx, conn, db.SeedClaimParams{
-			ItemID:          itemID.Bytes,
-			ClaimantID:      claimantID.Bytes,
+			ItemID:          itemID,
+			ClaimantID:      claimantID,
 			Status:          status,
 			ProofText:       pgtype.Text{String: proof, Valid: true},
 			SimilarityScore: pgtype.Float8{Float64: score, Valid: true},
 		})
 
 		if err != nil {
-			// Skip duplicates or errors
 			continue
 		}
-		claimIDs = append(claimIDs, pgtype.UUID{Bytes: id, Valid: true})
+		claimIDs = append(claimIDs, id)
 	}
 	return claimIDs, nil
 }
 
-func (s *Seeder) seedAuditLogs(ctx context.Context, users, items, hubs, claims []pgtype.UUID) error {
+func (s *Seeder) seedAuditLogs(ctx context.Context, users, items, hubs, claims []uuid.UUID) error {
 	conn, err := cmd.DBPool.Acquire(ctx)
 	if err != nil {
-		logger.Log.Error("[SEED-AUDIT-LOGS-ERROR]: Failed to acquire DB connection", err)
 		return err
 	}
 	defer conn.Release()
@@ -286,7 +316,7 @@ func (s *Seeder) seedAuditLogs(ctx context.Context, users, items, hubs, claims [
 	actions := []string{"CREATED", "UPDATED", "DELETED", "VIEWED"}
 	type target struct {
 		Type db.TargetType
-		IDs  []pgtype.UUID
+		IDs  []uuid.UUID
 	}
 	targets := []target{
 		{db.TargetTypeITEM, items},
@@ -306,10 +336,10 @@ func (s *Seeder) seedAuditLogs(ctx context.Context, users, items, hubs, claims [
 		targetID := t.IDs[rand.Intn(len(t.IDs))]
 
 		err := s.queries.SeedAuditLog(ctx, conn, db.SeedAuditLogParams{
-			ActorID:    actorID.Bytes,
+			ActorID:    uuid.NullUUID{UUID: actorID, Valid: true},
 			Action:     action,
 			TargetType: t.Type,
-			TargetID:   targetID.Bytes,
+			TargetID:   uuid.NullUUID{UUID: targetID, Valid: true},
 		})
 		if err != nil {
 			return err

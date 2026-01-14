@@ -18,10 +18,10 @@ VALUES ($1, $2, $3, $4)
 `
 
 type SeedAuditLogParams struct {
-	ActorID    uuid.UUID  `json:"actor_id"`
-	Action     string     `json:"action"`
-	TargetType TargetType `json:"target_type"`
-	TargetID   uuid.UUID  `json:"target_id"`
+	ActorID    uuid.NullUUID `json:"actor_id"`
+	Action     string        `json:"action"`
+	TargetType TargetType    `json:"target_type"`
+	TargetID   uuid.NullUUID `json:"target_id"`
 }
 
 func (q *Queries) SeedAuditLog(ctx context.Context, db DBTX, arg SeedAuditLogParams) error {
@@ -99,7 +99,7 @@ RETURNING id
 
 type SeedItemParams struct {
 	UserID              uuid.UUID          `json:"user_id"`
-	HubID               uuid.UUID          `json:"hub_id"`
+	HubID               uuid.NullUUID      `json:"hub_id"`
 	Name                string             `json:"name"`
 	Description         pgtype.Text        `json:"description"`
 	Type                ItemType           `json:"type"`
@@ -154,4 +154,13 @@ func (q *Queries) SeedUser(ctx context.Context, db DBTX, arg SeedUserParams) (uu
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const truncateTables = `-- name: TruncateTables :exec
+TRUNCATE TABLE audit_logs, claims, items, hubs, users, user_onboarding RESTART IDENTITY CASCADE
+`
+
+func (q *Queries) TruncateTables(ctx context.Context, db DBTX) error {
+	_, err := db.Exec(ctx, truncateTables)
+	return err
 }
