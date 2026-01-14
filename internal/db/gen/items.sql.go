@@ -419,3 +419,79 @@ func (q *Queries) FetchItemsByType(ctx context.Context, db DBTX, type_ ItemType)
 	}
 	return items, nil
 }
+
+const updateItemById = `-- name: UpdateItemById :one
+UPDATE items
+SET
+    name = COALESCE($1, name),
+    description = COALESCE($2, description),
+    location_description = COALESCE($3, location_description),
+    time_at = COALESCE($4, time_at),
+    latitude = COALESCE($5, latitude),
+    longitude = COALESCE($6, longitude),
+    hub_id = COALESCE($7, hub_id),
+    updated_at = NOW()
+WHERE id = $8
+  AND user_id = $9
+RETURNING
+    id,
+    hub_id,
+    name,
+    description,
+    location_description,
+    time_at,
+    latitude,
+    longitude,
+    updated_at
+`
+
+type UpdateItemByIdParams struct {
+	Name                pgtype.Text        `json:"name"`
+	Description         pgtype.Text        `json:"description"`
+	LocationDescription pgtype.Text        `json:"location_description"`
+	TimeAt              pgtype.Timestamptz `json:"time_at"`
+	Latitude            pgtype.Text        `json:"latitude"`
+	Longitude           pgtype.Text        `json:"longitude"`
+	HubID               uuid.NullUUID      `json:"hub_id"`
+	ID                  uuid.UUID          `json:"id"`
+	UserID              uuid.UUID          `json:"user_id"`
+}
+
+type UpdateItemByIdRow struct {
+	ID                  uuid.UUID          `json:"id"`
+	HubID               uuid.NullUUID      `json:"hub_id"`
+	Name                string             `json:"name"`
+	Description         pgtype.Text        `json:"description"`
+	LocationDescription pgtype.Text        `json:"location_description"`
+	TimeAt              pgtype.Timestamptz `json:"time_at"`
+	Latitude            pgtype.Text        `json:"latitude"`
+	Longitude           pgtype.Text        `json:"longitude"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) UpdateItemById(ctx context.Context, db DBTX, arg UpdateItemByIdParams) (UpdateItemByIdRow, error) {
+	row := db.QueryRow(ctx, updateItemById,
+		arg.Name,
+		arg.Description,
+		arg.LocationDescription,
+		arg.TimeAt,
+		arg.Latitude,
+		arg.Longitude,
+		arg.HubID,
+		arg.ID,
+		arg.UserID,
+	)
+	var i UpdateItemByIdRow
+	err := row.Scan(
+		&i.ID,
+		&i.HubID,
+		&i.Name,
+		&i.Description,
+		&i.LocationDescription,
+		&i.TimeAt,
+		&i.Latitude,
+		&i.Longitude,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

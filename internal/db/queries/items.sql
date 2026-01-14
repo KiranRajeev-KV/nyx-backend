@@ -157,3 +157,27 @@ LEFT JOIN hubs h ON h.id = i.hub_id
 WHERE i.user_id = $1
 ORDER BY i.created_at DESC;
 
+-- name: UpdateItemById :one
+UPDATE items
+SET
+    name = COALESCE(sqlc.narg('name'), name),
+    description = COALESCE(sqlc.narg('description'), description),
+    location_description = COALESCE(sqlc.narg('location_description'), location_description),
+    time_at = COALESCE(sqlc.narg('time_at'), time_at),
+    latitude = COALESCE(sqlc.narg('latitude'), latitude),
+    longitude = COALESCE(sqlc.narg('longitude'), longitude),
+    hub_id = COALESCE(sqlc.narg('hub_id'), hub_id),
+    updated_at = NOW()
+WHERE id = sqlc.arg('id')
+  AND user_id = sqlc.arg('user_id')
+RETURNING
+    id,
+    hub_id,
+    name,
+    description,
+    location_description,
+    time_at,
+    latitude,
+    longitude,
+    updated_at;
+
