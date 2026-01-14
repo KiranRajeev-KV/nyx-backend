@@ -93,48 +93,48 @@ func (s *Seeder) TruncateDB(ctx context.Context) error {
 	if err := s.queries.TruncateTables(ctx, conn); err != nil {
 		return err
 	}
-	fmt.Println("✅ Tables truncated successfully!")
+	fmt.Println("✔ Tables truncated successfully!")
 	return nil
 }
 
 func (s *Seeder) SeedDB(ctx context.Context) error {
-	fmt.Println("🌱 Starting database seeding...")
+	fmt.Println("✔ Starting database seeding...")
 
 	// 1. Seed Users
 	users, err := s.seedUsers(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to seed users: %w", err)
 	}
-	fmt.Printf("✅ Seeded %d users\n", len(users))
+	fmt.Printf("✔ Seeded %d users\n", len(users))
 
 	// 2. Seed Hubs
 	hubs, err := s.seedHubs(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to seed hubs: %w", err)
 	}
-	fmt.Printf("✅ Seeded %d hubs\n", len(hubs))
+	fmt.Printf("✔ Seeded %d hubs\n", len(hubs))
 
 	// 3. Seed Items
 	items, err := s.seedItems(ctx, users, hubs)
 	if err != nil {
 		return fmt.Errorf("failed to seed items: %w", err)
 	}
-	fmt.Printf("✅ Seeded %d items\n", len(items))
+	fmt.Printf("✔ Seeded %d items\n", len(items))
 
 	// 4. Seed Claims
 	claims, err := s.seedClaims(ctx, items, users)
 	if err != nil {
 		return fmt.Errorf("failed to seed claims: %w", err)
 	}
-	fmt.Printf("✅ Seeded %d claims\n", len(claims))
+	fmt.Printf("✔ Seeded %d claims\n", len(claims))
 
 	// 5. Seed Audit Logs
 	if err := s.seedAuditLogs(ctx, users, items, hubs, claims); err != nil {
 		return fmt.Errorf("failed to seed audit logs: %w", err)
 	}
-	fmt.Println("✅ Seeded audit logs")
+	fmt.Println("✔ Seeded audit logs")
 
-	fmt.Println("🎉 Database seeding completed successfully!")
+	fmt.Println("✔ Database seeding completed successfully!")
 	return nil
 }
 
