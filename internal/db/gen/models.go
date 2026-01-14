@@ -232,10 +232,10 @@ func (ns NullUserRole) Value() (driver.Value, error) {
 
 type AuditLog struct {
 	ID         uuid.UUID          `json:"id"`
-	ActorID    uuid.UUID          `json:"actor_id"`
+	ActorID    uuid.NullUUID      `json:"actor_id"`
 	Action     string             `json:"action"`
 	TargetType TargetType         `json:"target_type"`
-	TargetID   uuid.UUID          `json:"target_id"`
+	TargetID   uuid.NullUUID      `json:"target_id"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 }
 
@@ -248,7 +248,7 @@ type Claim struct {
 	ProofText       pgtype.Text        `json:"proof_text"`
 	ProofImageUrl   pgtype.Text        `json:"proof_image_url"`
 	AdminNotes      pgtype.Text        `json:"admin_notes"`
-	ProcessedBy     uuid.UUID          `json:"processed_by"`
+	ProcessedBy     uuid.NullUUID      `json:"processed_by"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 }
@@ -268,7 +268,7 @@ type Item struct {
 	ID                  uuid.UUID          `json:"id"`
 	UserID              uuid.UUID          `json:"user_id"`
 	IsAnonymous         bool               `json:"is_anonymous"`
-	HubID               uuid.UUID          `json:"hub_id"`
+	HubID               uuid.NullUUID      `json:"hub_id"`
 	Name                string             `json:"name"`
 	ImageUrlOriginal    pgtype.Text        `json:"image_url_original"`
 	ImageUrlRedacted    pgtype.Text        `json:"image_url_redacted"`

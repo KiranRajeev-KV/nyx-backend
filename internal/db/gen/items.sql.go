@@ -8,8 +8,103 @@ package db
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const createItem = `-- name: CreateItem :one
+INSERT INTO items (
+    user_id,
+    is_anonymous,
+    hub_id,
+    name,
+    description,
+    type,
+    location_description,
+    time_at,
+    latitude,
+    longitude,
+    created_at,
+    updated_at
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW()
+)
+RETURNING
+    id,
+    user_id,
+    is_anonymous,
+    hub_id,
+    name,
+    description,
+    type,
+    location_description,
+    time_at,
+    latitude,
+    longitude,
+    created_at,
+    updated_at
+`
+
+type CreateItemParams struct {
+	UserID              uuid.UUID          `json:"user_id"`
+	IsAnonymous         bool               `json:"is_anonymous"`
+	HubID               uuid.NullUUID      `json:"hub_id"`
+	Name                string             `json:"name"`
+	Description         pgtype.Text        `json:"description"`
+	Type                ItemType           `json:"type"`
+	LocationDescription pgtype.Text        `json:"location_description"`
+	TimeAt              pgtype.Timestamptz `json:"time_at"`
+	Latitude            pgtype.Text        `json:"latitude"`
+	Longitude           pgtype.Text        `json:"longitude"`
+}
+
+type CreateItemRow struct {
+	ID                  uuid.UUID          `json:"id"`
+	UserID              uuid.UUID          `json:"user_id"`
+	IsAnonymous         bool               `json:"is_anonymous"`
+	HubID               uuid.NullUUID      `json:"hub_id"`
+	Name                string             `json:"name"`
+	Description         pgtype.Text        `json:"description"`
+	Type                ItemType           `json:"type"`
+	LocationDescription pgtype.Text        `json:"location_description"`
+	TimeAt              pgtype.Timestamptz `json:"time_at"`
+	Latitude            pgtype.Text        `json:"latitude"`
+	Longitude           pgtype.Text        `json:"longitude"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) CreateItem(ctx context.Context, db DBTX, arg CreateItemParams) (CreateItemRow, error) {
+	row := db.QueryRow(ctx, createItem,
+		arg.UserID,
+		arg.IsAnonymous,
+		arg.HubID,
+		arg.Name,
+		arg.Description,
+		arg.Type,
+		arg.LocationDescription,
+		arg.TimeAt,
+		arg.Latitude,
+		arg.Longitude,
+	)
+	var i CreateItemRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.IsAnonymous,
+		&i.HubID,
+		&i.Name,
+		&i.Description,
+		&i.Type,
+		&i.LocationDescription,
+		&i.TimeAt,
+		&i.Latitude,
+		&i.Longitude,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
 
 const fetchAllItems = `-- name: FetchAllItems :many
 SELECT
@@ -31,18 +126,18 @@ ORDER BY
 `
 
 type FetchAllItemsRow struct {
-	ID               pgtype.UUID
-	Name             string
-	Description      pgtype.Text
-	ImageUrlRedacted pgtype.Text
-	Status           ItemStatus
-	Type             ItemType
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
+	ID               uuid.UUID          `json:"id"`
+	Name             string             `json:"name"`
+	Description      pgtype.Text        `json:"description"`
+	ImageUrlRedacted pgtype.Text        `json:"image_url_redacted"`
+	Status           ItemStatus         `json:"status"`
+	Type             ItemType           `json:"type"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 }
 
-func (q *Queries) FetchAllItems(ctx context.Context) ([]FetchAllItemsRow, error) {
-	rows, err := q.db.Query(ctx, fetchAllItems)
+func (q *Queries) FetchAllItems(ctx context.Context, db DBTX) ([]FetchAllItemsRow, error) {
+	rows, err := db.Query(ctx, fetchAllItems)
 	if err != nil {
 		return nil, err
 	}
@@ -91,18 +186,18 @@ ORDER BY
 `
 
 type FetchItemsByTypeRow struct {
-	ID               pgtype.UUID
-	Name             string
-	Description      pgtype.Text
-	ImageUrlRedacted pgtype.Text
-	Status           ItemStatus
-	Type             ItemType
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
+	ID               uuid.UUID          `json:"id"`
+	Name             string             `json:"name"`
+	Description      pgtype.Text        `json:"description"`
+	ImageUrlRedacted pgtype.Text        `json:"image_url_redacted"`
+	Status           ItemStatus         `json:"status"`
+	Type             ItemType           `json:"type"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 }
 
-func (q *Queries) FetchItemsByType(ctx context.Context, type_ ItemType) ([]FetchItemsByTypeRow, error) {
-	rows, err := q.db.Query(ctx, fetchItemsByType, type_)
+func (q *Queries) FetchItemsByType(ctx context.Context, db DBTX, type_ ItemType) ([]FetchItemsByTypeRow, error) {
+	rows, err := db.Query(ctx, fetchItemsByType, type_)
 	if err != nil {
 		return nil, err
 	}

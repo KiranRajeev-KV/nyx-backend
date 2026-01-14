@@ -35,3 +35,35 @@ WHERE
 ORDER BY
     created_at DESC;
 
+-- name: CreateItem :one
+INSERT INTO items (
+    user_id,
+    is_anonymous,
+    hub_id,
+    name,
+    description,
+    type,
+    location_description,
+    time_at,
+    latitude,
+    longitude,
+    created_at,
+    updated_at
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW()
+)
+RETURNING
+    id,
+    user_id,
+    is_anonymous,
+    hub_id,
+    name,
+    description,
+    type,
+    location_description,
+    time_at,
+    latitude,
+    longitude,
+    created_at,
+    updated_at
+;
