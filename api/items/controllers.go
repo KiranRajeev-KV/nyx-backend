@@ -306,6 +306,121 @@ func FetchAllItemsByUserId(c *gin.Context) {
 	logger.Log.SuccessCtx(c)
 }
 
-func UpdateItemById(c *gin.Context) {}
+func UpdateItemById(c *gin.Context) {
+	id := c.Param("id")
+
+	itemUUID, exists := pkg.GrabUuid(c, id, "ITEMS", "itemId")
+	if !exists {
+		return
+	}
+
+	userId, ok := pkg.GrabUserId(c, "ITEMS")
+	if !ok {
+		return
+	}
+
+	userUUID, exists := pkg.GrabUuid(c, userId, "ITEMS", "userId")
+	if !exists {
+		return
+	}
+
+	req, ok := pkg.ValidateRequest[models.UpdateItemRequest](c)
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, err := cmd.DBPool.Acquire(ctx)
+	if pkg.HandleDbAcquireErr(c, err, "ITEMS") {
+		return
+	}
+	defer conn.Release()
+
+	q := db.New()
+
+	params := db.UpdateItemByIdParams{
+		ID:     itemUUID,
+		UserID: userUUID,
+	}
+
+	if req.Name != nil {
+		params.Name = pgtype.Text{String: *req.Name, Valid: true}
+	} else {
+		params.Name = pgtype.Text{Valid: false}
+	}
+
+	if req.Description != nil {
+		params.Description = pgtype.Text{String: *req.Description, Valid: true}
+	} else {
+		params.Description = pgtype.Text{Valid: false}
+	}
+
+	if req.Location != nil {
+		params.LocationDescription = pgtype.Text{String: *req.Location, Valid: true}
+	} else {
+		params.LocationDescription = pgtype.Text{Valid: false}
+	}
+
+	if req.Latitude != nil {
+		params.Latitude = pgtype.Text{String: *req.Latitude, Valid: true}
+	} else {
+		params.Latitude = pgtype.Text{Valid: false}
+	}
+
+	if req.Longitude != nil {
+		params.Longitude = pgtype.Text{String: *req.Longitude, Valid: true}
+	} else {
+		params.Longitude = pgtype.Text{Valid: false}
+	}
+
+	if req.HubId != nil {
+		hubUUID, err := uuid.Parse(*req.HubId)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"message": "Invalid Hub ID",
+			})
+			return
+		}
+		params.HubID = uuid.NullUUID{UUID: hubUUID, Valid: true}
+	} else {
+		params.HubID = uuid.NullUUID{Valid: false}
+	}
+
+	if req.TimeAt != nil {
+		t, err := time.Parse(time.RFC3339, *req.TimeAt)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"message": "Invalid time format for TimeAt",
+			})
+			return
+		}
+		params.TimeAt = pgtype.Timestamptz{Time: t, Valid: true}
+	} else {
+		params.TimeAt = pgtype.Timestamptz{Valid: false}
+	}
+
+	updatedItem, err := q.UpdateItemById(ctx, conn, params)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+				"message": "Item not found or you are not authorized to update it",
+			})
+			return
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to update item in DB", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Item updated successfully",
+		"data":    updatedItem,
+	})
+	logger.Log.SuccessCtx(c)
+}
 
 func DeleteItemById(c *gin.Context) {}
