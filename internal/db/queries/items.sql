@@ -181,3 +181,17 @@ RETURNING
     longitude,
     updated_at;
 
+-- name: SoftDeleteItemById :one
+UPDATE
+    items
+SET
+    status = 'DELETED',
+    updated_at = NOW()
+WHERE
+    id = $1
+    AND user_id = $2
+RETURNING
+    id,
+    status,
+    updated_at;
+

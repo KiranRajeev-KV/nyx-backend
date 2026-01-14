@@ -206,7 +206,7 @@ SELECT
 FROM items i
 LEFT JOIN users u ON u.id = i.user_id
 LEFT JOIN hubs h ON h.id = i.hub_id
-WHERE i.user_id = $1
+WHERE i.user_id = $1 AND i.status != 'DELETED'
 ORDER BY i.created_at DESC
 `
 
@@ -418,6 +418,39 @@ func (q *Queries) FetchItemsByType(ctx context.Context, db DBTX, type_ ItemType)
 		return nil, err
 	}
 	return items, nil
+}
+
+const softDeleteItemById = `-- name: SoftDeleteItemById :one
+UPDATE
+    items
+SET
+    status = 'DELETED',
+    updated_at = NOW()
+WHERE
+    id = $1
+    AND user_id = $2
+RETURNING
+    id,
+    status,
+    updated_at
+`
+
+type SoftDeleteItemByIdParams struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+type SoftDeleteItemByIdRow struct {
+	ID        uuid.UUID          `json:"id"`
+	Status    ItemStatus         `json:"status"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) SoftDeleteItemById(ctx context.Context, db DBTX, arg SoftDeleteItemByIdParams) (SoftDeleteItemByIdRow, error) {
+	row := db.QueryRow(ctx, softDeleteItemById, arg.ID, arg.UserID)
+	var i SoftDeleteItemByIdRow
+	err := row.Scan(&i.ID, &i.Status, &i.UpdatedAt)
+	return i, err
 }
 
 const updateItemById = `-- name: UpdateItemById :one
