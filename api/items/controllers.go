@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -167,8 +169,79 @@ func CreateItem(c *gin.Context) {
 	logger.Log.SuccessCtx(c)
 }
 
-func FetchItemByID(c *gin.Context) {}
+func FetchItemById(c *gin.Context) {
+	id := c.Param("id")
 
-func UpdateItemByID(c *gin.Context) {}
+	itemUUID, exists := pkg.GrabUuid(c, id, "ITEMS", "itemId")
+	if !exists {
+		return
+	}
 
-func DeleteItemByID(c *gin.Context) {}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, err := cmd.DBPool.Acquire(ctx)
+	if pkg.HandleDbAcquireErr(c, err, "ITEMS") {
+		return
+	}
+	defer conn.Release()
+
+	q := db.New()
+
+	item, err := q.FetchItemByID(ctx, conn, itemUUID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+				"message": "Item not found",
+			})
+			return
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to fetch item by ID from DB", err)
+		return
+	}
+
+	var userObj any
+	if item.User != nil {
+		if err := json.Unmarshal(item.User, &userObj); err != nil {
+			logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to unmarshal user JSON", err)
+		}
+	}
+
+	var hubObj any
+	if item.Hub != nil {
+		if err := json.Unmarshal(item.Hub, &hubObj); err != nil {
+			logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to unmarshal hub JSON", err)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Item fetched successfully",
+		"data": gin.H{
+			"id":                   item.ID,
+			"is_anonymous":         item.IsAnonymous,
+			"name":                 item.Name,
+			"image_url_redacted":   item.ImageUrlRedacted,
+			"description":          item.Description,
+			"status":               item.Status,
+			"type":                 item.Type,
+			"location_description": item.LocationDescription,
+			"time_at":              item.TimeAt,
+			"latitude":             item.Latitude,
+			"longitude":            item.Longitude,
+			"created_at":           item.CreatedAt,
+			"updated_at":           item.UpdatedAt,
+			"user":                 userObj,
+			"hub":                  hubObj,
+		},
+	})
+	logger.Log.SuccessCtx(c)
+}
+
+func FetchAllItemsByUserId(c *gin.Context) {}
+
+func UpdateItemById(c *gin.Context) {}
+
+func DeleteItemById(c *gin.Context) {}
