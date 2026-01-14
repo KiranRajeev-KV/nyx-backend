@@ -240,7 +240,71 @@ func FetchItemById(c *gin.Context) {
 	logger.Log.SuccessCtx(c)
 }
 
-func FetchAllItemsByUserId(c *gin.Context) {}
+func FetchAllItemsByUserId(c *gin.Context) {
+	userId, ok := pkg.GrabUserId(c, "ITEMS")
+	if !ok {
+		return
+	}
+
+	userUUID, exists := pkg.GrabUuid(c, userId, "ITEMS", "userId")
+	if !exists {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, err := cmd.DBPool.Acquire(ctx)
+	if pkg.HandleDbAcquireErr(c, err, "ITEMS") {
+		return
+	}
+	defer conn.Release()
+
+	q := db.New()
+
+	items, err := q.FetchAllItemsByUserId(ctx, conn, userUUID)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to fetch items by user ID from DB", err)
+		return
+	}
+
+	response := make([]gin.H, len(items))
+	for i, item := range items {
+		var hubObj any
+		if item.Hub != nil {
+			if err := json.Unmarshal(item.Hub, &hubObj); err != nil {
+				logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to unmarshal hub JSON", err)
+			}
+		}
+
+		response[i] = gin.H{
+			"id":                   item.ID,
+			"is_anonymous":         item.IsAnonymous,
+			"name":                 item.Name,
+			"image_url_redacted":   item.ImageUrlRedacted,
+			"description":          item.Description,
+			"status":               item.Status,
+			"type":                 item.Type,
+			"location_description": item.LocationDescription,
+			"time_at":              item.TimeAt,
+			"latitude":             item.Latitude,
+			"longitude":            item.Longitude,
+			"created_at":           item.CreatedAt,
+			"updated_at":           item.UpdatedAt,
+			"user":                 item.User,
+			"hub":                  hubObj,
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Items fetched successfully",
+		"data":    response,
+	})
+	logger.Log.SuccessCtx(c)
+}
 
 func UpdateItemById(c *gin.Context) {}
 
