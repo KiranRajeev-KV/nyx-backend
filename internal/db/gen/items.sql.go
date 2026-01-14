@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -154,6 +155,108 @@ func (q *Queries) FetchAllItems(ctx context.Context, db DBTX) ([]FetchAllItemsRo
 			&i.Type,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const fetchAllItemsByUserId = `-- name: FetchAllItemsByUserId :many
+SELECT
+    i.id,
+    i.user_id,
+    i.is_anonymous,
+    i.hub_id,
+    i.name,
+    i.image_url_redacted,
+    i.description,
+    i.status,
+    i.type,
+    i.location_description,
+    i.time_at,
+    i.latitude,
+    i.longitude,
+    i.created_at,
+    i.updated_at,
+    
+    jsonb_build_object(
+        'id', u.id,
+        'name', u.name,
+        'email', u.email,
+        'phone', u.phone,
+        'trust_score', u.trust_score
+    ) AS "user",
+
+    -- hub details only for FOUND items
+    CASE
+      WHEN i.type = 'FOUND' THEN jsonb_build_object(
+        'id', h.id,
+        'name', h.name,
+        'address', h.address,
+        'contact', h.contact
+      )
+      ELSE NULL
+    END AS hub
+
+FROM items i
+LEFT JOIN users u ON u.id = i.user_id
+LEFT JOIN hubs h ON h.id = i.hub_id
+WHERE i.user_id = $1
+ORDER BY i.created_at DESC
+`
+
+type FetchAllItemsByUserIdRow struct {
+	ID                  uuid.UUID          `json:"id"`
+	UserID              uuid.UUID          `json:"user_id"`
+	IsAnonymous         bool               `json:"is_anonymous"`
+	HubID               uuid.NullUUID      `json:"hub_id"`
+	Name                string             `json:"name"`
+	ImageUrlRedacted    pgtype.Text        `json:"image_url_redacted"`
+	Description         pgtype.Text        `json:"description"`
+	Status              ItemStatus         `json:"status"`
+	Type                ItemType           `json:"type"`
+	LocationDescription pgtype.Text        `json:"location_description"`
+	TimeAt              pgtype.Timestamptz `json:"time_at"`
+	Latitude            pgtype.Text        `json:"latitude"`
+	Longitude           pgtype.Text        `json:"longitude"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+	User                json.RawMessage    `json:"user"`
+	Hub                 []byte             `json:"hub"`
+}
+
+func (q *Queries) FetchAllItemsByUserId(ctx context.Context, db DBTX, userID uuid.UUID) ([]FetchAllItemsByUserIdRow, error) {
+	rows, err := db.Query(ctx, fetchAllItemsByUserId, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FetchAllItemsByUserIdRow
+	for rows.Next() {
+		var i FetchAllItemsByUserIdRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.IsAnonymous,
+			&i.HubID,
+			&i.Name,
+			&i.ImageUrlRedacted,
+			&i.Description,
+			&i.Status,
+			&i.Type,
+			&i.LocationDescription,
+			&i.TimeAt,
+			&i.Latitude,
+			&i.Longitude,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.User,
+			&i.Hub,
 		); err != nil {
 			return nil, err
 		}

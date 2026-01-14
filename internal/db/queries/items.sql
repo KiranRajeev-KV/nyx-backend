@@ -114,4 +114,46 @@ LEFT JOIN users u ON u.id = i.user_id
 LEFT JOIN hubs h ON h.id = i.hub_id
 WHERE i.id = $1;
 
+-- name: FetchAllItemsByUserId :many
+SELECT
+    i.id,
+    i.user_id,
+    i.is_anonymous,
+    i.hub_id,
+    i.name,
+    i.image_url_redacted,
+    i.description,
+    i.status,
+    i.type,
+    i.location_description,
+    i.time_at,
+    i.latitude,
+    i.longitude,
+    i.created_at,
+    i.updated_at,
+    
+    jsonb_build_object(
+        'id', u.id,
+        'name', u.name,
+        'email', u.email,
+        'phone', u.phone,
+        'trust_score', u.trust_score
+    ) AS "user",
+
+    -- hub details only for FOUND items
+    CASE
+      WHEN i.type = 'FOUND' THEN jsonb_build_object(
+        'id', h.id,
+        'name', h.name,
+        'address', h.address,
+        'contact', h.contact
+      )
+      ELSE NULL
+    END AS hub
+
+FROM items i
+LEFT JOIN users u ON u.id = i.user_id
+LEFT JOIN hubs h ON h.id = i.hub_id
+WHERE i.user_id = $1
+ORDER BY i.created_at DESC;
 
