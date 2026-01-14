@@ -90,7 +90,7 @@ CREATE TABLE hubs(
 CREATE TABLE items(
     id uuid PRIMARY KEY DEFAULT uuidv7(),
     user_id uuid NOT NULL REFERENCES users(id) ON UPDATE CASCADE ON DELETE RESTRICT,
-    is_anonymous boolean DEFAULT FALSE,
+    is_anonymous boolean NOT NULL DEFAULT FALSE,
     hub_id uuid REFERENCES hubs(id) ON UPDATE CASCADE ON DELETE RESTRICT,
     name text NOT NULL,
     image_url_original text,
