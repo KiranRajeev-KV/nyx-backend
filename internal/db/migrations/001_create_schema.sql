@@ -107,6 +107,12 @@ CREATE TABLE items(
     metadata jsonb DEFAULT '{}'::jsonb,
     created_at timestamptz DEFAULT NOW(),
     updated_at timestamptz DEFAULT NOW()
+
+    CONSTRAINT check_hub_id_null_when_lost
+      CHECK (
+          type != 'LOST'
+          OR hub_id IS NULL
+      )
 );
 
 -- +goose StatementEnd
