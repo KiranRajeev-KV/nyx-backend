@@ -54,3 +54,14 @@ func (r UpdateItemRequest) Validate() (errorMsg string, err error) {
 	)
 	return "Invalid request format for updating an item", err
 }
+
+type UpdateItemStatusRequest struct {
+	Status string `json:"status"`
+}
+
+func (r UpdateItemStatusRequest) Validate() (errorMsg string, err error) {
+	err = v.ValidateStruct(&r,
+		v.Field(&r.Status, v.Required.Error("Status is required"), v.In("OPEN", "PENDING_CLAIM", "ARCHIVED", "RESOLVED").Error("Status must be one of OPEN, PENDING_CLAIM, ARCHIVED, or RESOLVED")),
+	)
+	return "Invalid request format for updating item status", err
+}

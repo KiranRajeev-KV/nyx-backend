@@ -475,3 +475,52 @@ func DeleteItemById(c *gin.Context) {
 	})
 	logger.Log.SuccessCtx(c)
 }
+
+func UpdateItemStatus(c *gin.Context) {
+	id := c.Param("id")
+
+	itemUUID, exists := pkg.GrabUuid(c, id, "ITEMS", "itemId")
+	if !exists {
+		return
+	}
+
+	req, ok := pkg.ValidateRequest[models.UpdateItemStatusRequest](c)
+	if !ok {
+		return
+	}
+	
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, err := cmd.DBPool.Acquire(ctx)
+	if pkg.HandleDbAcquireErr(c, err, "ITEMS") {
+		return
+	}
+	defer conn.Release()
+
+	q := db.New()
+	
+	updatedItem, err := q.UpdateItemStatusById(ctx, conn, db.UpdateItemStatusByIdParams{
+		ID:     itemUUID,
+		Status: db.ItemStatus(req.Status),
+	})
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+				"message": "Item not found",
+			})
+			return
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to update item status in DB", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Item status updated successfully",
+		"data":    updatedItem,
+	})
+	logger.Log.SuccessCtx(c)
+}
