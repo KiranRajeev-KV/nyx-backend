@@ -48,10 +48,10 @@ func RegisterUser(c *gin.Context) {
 	}
 	defer pkg.RollbackTx(c, tx, ctx, "REGISTER")
 
-	q := db.New(tx)
+	q := db.New()
 
 	// check if email is already registered in users table
-	exists, err := q.CheckEmailExists(ctx, req.Email)
+	exists, err := q.CheckEmailExists(ctx, tx, req.Email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Oops! Something happened. Please try again later.",
@@ -68,7 +68,7 @@ func RegisterUser(c *gin.Context) {
 	}
 
 	// check if a pending onboarding already exists
-	pending, err := q.CheckPendingOnboarding(ctx, req.Email)
+	pending, err := q.CheckPendingOnboarding(ctx, tx, req.Email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Oops! Something happened. Please try again later.",
@@ -102,7 +102,7 @@ func RegisterUser(c *gin.Context) {
 	}
 
 	// upsert onboarding with name, email, hashed password, OTP and expiry
-	result, err := q.UpsertUserOnboarding(ctx, db.UpsertUserOnboardingParams{
+	result, err := q.UpsertUserOnboarding(ctx, tx, db.UpsertUserOnboardingParams{
 		Name:     req.Name,
 		Email:    req.Email,
 		Password: hashedPass,
@@ -174,10 +174,10 @@ func VerifyOTP(c *gin.Context) {
 	}
 	defer pkg.RollbackTx(c, tx, ctx, "VERIFY-OTP")
 
-	q := db.New(tx)
+	q := db.New()
 
 	// fetch pending onboarding
-	onboarding, err := q.GetPendingOnboardingByEmail(ctx, tempEmail)
+	onboarding, err := q.GetPendingOnboardingByEmail(ctx, tx, tempEmail)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "Invalid OTP or onboarding not found. Please register again.",
@@ -187,7 +187,7 @@ func VerifyOTP(c *gin.Context) {
 	}
 
 	// check OTP validity and expiry
-	if onboarding.Otp != req.OTP || time.Now().After(onboarding.ExpiresAt.Time) {
+	if onboarding.Otp != req.OTP || time.Now().After(onboarding.ExpiresAt) {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"message": "Invalid or expired OTP. Please try again.",
 		})
@@ -196,7 +196,7 @@ func VerifyOTP(c *gin.Context) {
 	}
 
 	// create user in users table
-	_, err = q.CreateUser(ctx, db.CreateUserParams{
+	_, err = q.CreateUser(ctx, tx, db.CreateUserParams{
 		Name:       onboarding.Name,
 		Email:      onboarding.Email,
 		Password:   onboarding.Password,
@@ -220,7 +220,7 @@ func VerifyOTP(c *gin.Context) {
 		return
 	}
 
-	if err := q.DeleteOnboardingByEmail(ctx, onboarding.Email); err != nil {
+	if err := q.DeleteOnboardingByEmail(ctx, tx, onboarding.Email); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Oops! Something happened. Please try again later.",
 		})
@@ -252,10 +252,16 @@ func LoginUser(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	q := db.New(cmd.DBPool)
+	conn, err := cmd.DBPool.Acquire(ctx)
+	if pkg.HandleDbAcquireErr(c, err, "LOGIN") {
+		return
+	}
+	defer conn.Release()
+
+	q := db.New()
 
 	// fetch user by email
-	user, err := q.GetUserByEmail(ctx, req.Email)
+	user, err := q.GetUserByEmail(ctx, conn, req.Email)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"message": "Invalid email or password.",
@@ -293,7 +299,7 @@ func LoginUser(c *gin.Context) {
 	}
 
 	// set refresh token in db
-	err = q.SetUserRefreshToken(ctx, db.SetUserRefreshTokenParams{
+	err = q.SetUserRefreshToken(ctx, conn, db.SetUserRefreshTokenParams{
 		ID:           user.ID,
 		RefreshToken: pgtype.Text{String: refreshToken, Valid: true},
 	})
@@ -339,9 +345,9 @@ func FetchUserSession(c *gin.Context) {
 	}
 	defer conn.Release()
 
-	q := db.New(conn)
+	q := db.New()
 
-	result, err := q.FetchUserSession(ctx, email)
+	result, err := q.FetchUserSession(ctx, conn, email)
 	if err == pgx.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{
 			"message": "No session found for user",
