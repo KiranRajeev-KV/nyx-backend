@@ -127,13 +127,17 @@ func CreateItem(c *gin.Context) {
 
 	q := db.New()
 
-	timeAt, err := time.Parse(time.RFC3339, req.TimeAt)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": "Invalid time format for TimeAt",
-		})
-		logger.Log.WarnCtx(c, "[ITEMS-WARN] Invalid time format")
-		return
+	var timeAt time.Time
+	if req.TimeAt != "" {
+		var err error
+		timeAt, err = time.Parse(time.RFC3339, req.TimeAt)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"message": "Invalid time format for TimeAt",
+			})
+			logger.Log.WarnCtx(c, "[ITEMS-WARN] Invalid time format")
+			return
+		}
 	}
 
 	newItem, err := q.CreateItem(ctx, conn, db.CreateItemParams{
@@ -144,7 +148,7 @@ func CreateItem(c *gin.Context) {
 		Description:         pgtype.Text{String: req.Description, Valid: true},
 		Type:                db.ItemType(req.Type),
 		LocationDescription: pgtype.Text{String: req.Location, Valid: true},
-		TimeAt:              pgtype.Timestamptz{Time: timeAt, Valid: true},
+		TimeAt:              pgtype.Timestamptz{Time: timeAt, Valid: !timeAt.IsZero()},
 		Latitude:            pgtype.Text{String: req.Latitude, Valid: true},
 		Longitude:           pgtype.Text{String: req.Longitude, Valid: true},
 	})
