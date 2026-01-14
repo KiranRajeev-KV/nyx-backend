@@ -1,0 +1,60 @@
+meta {
+  name: create-item
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{BASE_URL}}/items/
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "is_anonymous": false,
+    "name": "Black Wallet",
+    "description": "I lost my black leather wallet near Greenway Park last evening. It has all my cards inside.",
+    "type": "LOST",
+    "location": "Near the fountain at Greenway Park",
+    "time_at": "2025-12-05T18:30:00Z",
+    "latitude": "12.345678",
+    "longitude": "98.765432"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  # LOST item (no HubId, is_anonymous must be FALSE)
+  ```json
+  {
+    "is_anonymous": false,
+    "hub_id": null, # can be null or just omitted entirly
+    "name": "Black Wallet Lost Near Park",
+    "description": "I lost my black leather wallet near Greenway Park last evening. It has all my cards inside.",
+    "type": "LOST",
+    "location": "Near the fountain at Greenway Park",
+    "time_at": "2025-12-05T18:30:00Z",
+    "latitude": "12.345678",
+    "longitude": "98.765432"
+  }
+  ```
+  # FOUND item (hub required, is_anonymous can be TRUE or FALSE)
+  ```json
+  {
+    "is_anonymous": false,
+    "hub_id": "019bbc79-2089-7889-a6c9-ddf8f864026a",
+    "name": "Found Silver Keychain",
+    "description": "Found a silver keychain with three keys near the community library.",
+    "type": "FOUND",
+    "location": "Library front steps",
+    "time_at": "2026-01-10T14:15:00Z",
+    "latitude": "10.123456",
+    "longitude": "76.987654"
+  }
+  ```
+}

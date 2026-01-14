@@ -18,10 +18,10 @@ tasks:
   deps:
     desc: "Download and tidy Go dependencies"
     cmds:
-      - go install github.com/air-verse/air@latest  # Install Air
-      - go install github.com/pressly/goose/v3/cmd/goose@latest  # Install Goose
-      - go install github.com/evilmartians/lefthook/v2@latest  # Install Lefthook
-      - go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest  # Install sqlc
+      - go install github.com/air-verse/air@latest # Install Air
+      - go install github.com/pressly/goose/v3/cmd/goose@latest # Install Goose
+      - go install github.com/evilmartians/lefthook/v2@latest # Install Lefthook
+      - go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest # Install sqlc
       - go mod download
       - go mod tidy
 
@@ -88,6 +88,21 @@ tasks:
     cmds:
       - docker compose down -v
       - echo "[OK] Database reset complete"
+
+  db:seed:
+    desc: "Seed the database with dummy data (DEV only)"
+    cmds:
+      - go run internal/seed/seed.go --seed
+
+  db:truncate:
+    desc: "Truncate all tables (DEV only)"
+    cmds:
+      - go run internal/seed/seed.go --truncate
+
+  db:rebuild:
+    desc: "Truncate and then seed the database (DEV only)"
+    cmds:
+      - go run internal/seed/seed.go --truncate --seed
 
   # ===== Migrations =====
   status:

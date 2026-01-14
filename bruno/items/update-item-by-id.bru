@@ -1,0 +1,33 @@
+meta {
+  name: update-item-by-id
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{BASE_URL}}/items/:id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  id: 019bbcd3-d654-76bf-98dc-121f7487b2e1
+}
+
+body:json {
+  {
+    "name": "Updated Found Keys",
+    "description": "Found these keys again and updating coordinates.",
+    "location": "Just outside the bus stop",
+    "time_at": "2026-01-20T12:30:00Z",
+    "latitude": "10.111222",
+    "longitude": "75.333444"
+  }
+  
+  
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

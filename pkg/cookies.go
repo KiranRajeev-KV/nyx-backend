@@ -97,9 +97,9 @@ func RevokeRefreshToken(c *gin.Context, email string) {
 	}
 	defer conn.Release()
 
-	q := db.New(conn)
+	q := db.New()
 
-	_, err = q.RevokeRefreshTokenQuery(ctx, email)
+	_, err = q.RevokeRefreshTokenQuery(ctx, conn, email)
 	if err != nil {
 		logger.Log.ErrorCtx(c, "[AUTH-ERROR]: Failed to revoke Refresh Token in DB", err)
 		return

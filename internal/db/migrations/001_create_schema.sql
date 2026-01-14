@@ -90,7 +90,7 @@ CREATE TABLE hubs(
 CREATE TABLE items(
     id uuid PRIMARY KEY DEFAULT uuidv7(),
     user_id uuid NOT NULL REFERENCES users(id) ON UPDATE CASCADE ON DELETE RESTRICT,
-    is_anonymous boolean DEFAULT FALSE,
+    is_anonymous boolean NOT NULL DEFAULT FALSE,
     hub_id uuid REFERENCES hubs(id) ON UPDATE CASCADE ON DELETE RESTRICT,
     name text NOT NULL,
     image_url_original text,
@@ -107,6 +107,12 @@ CREATE TABLE items(
     metadata jsonb DEFAULT '{}'::jsonb,
     created_at timestamptz DEFAULT NOW(),
     updated_at timestamptz DEFAULT NOW()
+
+    CONSTRAINT check_hub_id_null_when_lost
+      CHECK (
+          type != 'LOST'
+          OR hub_id IS NULL
+      )
 );
 
 -- +goose StatementEnd

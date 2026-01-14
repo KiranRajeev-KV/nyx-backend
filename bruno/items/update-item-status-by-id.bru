@@ -1,0 +1,26 @@
+meta {
+  name: update-item-status-by-id
+  type: http
+  seq: 7
+}
+
+patch {
+  url: {{BASE_URL}}/items/:id/status
+  body: json
+  auth: inherit
+}
+
+params:path {
+  id: 019bbd0a-b3fd-7187-9a30-2b8376540304
+}
+
+body:json {
+  {
+    "status":"ARCHIVED"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

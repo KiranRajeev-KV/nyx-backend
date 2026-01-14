@@ -8,7 +8,7 @@ import (
 )
 
 type Validatable interface {
-	Validate() error
+	Validate() (errorMsg string, err error)
 }
 
 func ValidateRequest[T Validatable](c *gin.Context) (*T, bool) {
@@ -20,9 +20,9 @@ func ValidateRequest[T Validatable](c *gin.Context) (*T, bool) {
 		return nil, false
 	}
 
-	if err := req.Validate(); err != nil {
+	if errorMsg, err := req.Validate(); err != nil {
 		logger.Log.ErrorCtx(c, "[REQ-ERROR]: Validation failed", err)
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"message": errorMsg})
 		return nil, false
 	}
 

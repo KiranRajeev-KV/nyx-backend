@@ -194,7 +194,7 @@ func VerifyRefreshToken(c *gin.Context, refreshToken string) (*paseto.Token, err
 	}
 	defer conn.Release()
 
-	q := db.New(conn)
+	q := db.New()
 
 	// Possible scenarios
 	// 1. RefreshToken does not exist
@@ -202,7 +202,7 @@ func VerifyRefreshToken(c *gin.Context, refreshToken string) (*paseto.Token, err
 	// 3. RefreshToken is perfect and it can generate AuthToken
 	var token pgtype.Text
 
-	token, err = q.CheckRefreshTokenQuery(ctx, email)
+	token, err = q.CheckRefreshTokenQuery(ctx, conn, email)
 	if err != nil {
 		logger.Log.FatalCtx(c, "[AUTH-ERROR] Failed to fetch refresh token from DB", err)
 		return nil, err

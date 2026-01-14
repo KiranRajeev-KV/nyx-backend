@@ -7,7 +7,9 @@ package db
 import (
 	"database/sql/driver"
 	"fmt"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pgvector/pgvector-go"
 )
@@ -33,8 +35,8 @@ func (e *ClaimStatus) Scan(src interface{}) error {
 }
 
 type NullClaimStatus struct {
-	ClaimStatus ClaimStatus
-	Valid       bool // Valid is true if ClaimStatus is not NULL
+	ClaimStatus ClaimStatus `json:"claim_status"`
+	Valid       bool        `json:"valid"` // Valid is true if ClaimStatus is not NULL
 }
 
 // Scan implements the Scanner interface.
@@ -78,8 +80,8 @@ func (e *ItemStatus) Scan(src interface{}) error {
 }
 
 type NullItemStatus struct {
-	ItemStatus ItemStatus
-	Valid      bool // Valid is true if ItemStatus is not NULL
+	ItemStatus ItemStatus `json:"item_status"`
+	Valid      bool       `json:"valid"` // Valid is true if ItemStatus is not NULL
 }
 
 // Scan implements the Scanner interface.
@@ -120,8 +122,8 @@ func (e *ItemType) Scan(src interface{}) error {
 }
 
 type NullItemType struct {
-	ItemType ItemType
-	Valid    bool // Valid is true if ItemType is not NULL
+	ItemType ItemType `json:"item_type"`
+	Valid    bool     `json:"valid"` // Valid is true if ItemType is not NULL
 }
 
 // Scan implements the Scanner interface.
@@ -164,8 +166,8 @@ func (e *TargetType) Scan(src interface{}) error {
 }
 
 type NullTargetType struct {
-	TargetType TargetType
-	Valid      bool // Valid is true if TargetType is not NULL
+	TargetType TargetType `json:"target_type"`
+	Valid      bool       `json:"valid"` // Valid is true if TargetType is not NULL
 }
 
 // Scan implements the Scanner interface.
@@ -206,8 +208,8 @@ func (e *UserRole) Scan(src interface{}) error {
 }
 
 type NullUserRole struct {
-	UserRole UserRole
-	Valid    bool // Valid is true if UserRole is not NULL
+	UserRole UserRole `json:"user_role"`
+	Valid    bool     `json:"valid"` // Valid is true if UserRole is not NULL
 }
 
 // Scan implements the Scanner interface.
@@ -229,83 +231,83 @@ func (ns NullUserRole) Value() (driver.Value, error) {
 }
 
 type AuditLog struct {
-	ID         pgtype.UUID
-	ActorID    pgtype.UUID
-	Action     string
-	TargetType TargetType
-	TargetID   pgtype.UUID
-	CreatedAt  pgtype.Timestamptz
+	ID         uuid.UUID          `json:"id"`
+	ActorID    uuid.NullUUID      `json:"actor_id"`
+	Action     string             `json:"action"`
+	TargetType TargetType         `json:"target_type"`
+	TargetID   uuid.NullUUID      `json:"target_id"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 }
 
 type Claim struct {
-	ID              pgtype.UUID
-	ItemID          pgtype.UUID
-	ClaimantID      pgtype.UUID
-	Status          ClaimStatus
-	SimilarityScore pgtype.Float8
-	ProofText       pgtype.Text
-	ProofImageUrl   pgtype.Text
-	AdminNotes      pgtype.Text
-	ProcessedBy     pgtype.UUID
-	CreatedAt       pgtype.Timestamptz
-	UpdatedAt       pgtype.Timestamptz
+	ID              uuid.UUID          `json:"id"`
+	ItemID          uuid.UUID          `json:"item_id"`
+	ClaimantID      uuid.UUID          `json:"claimant_id"`
+	Status          ClaimStatus        `json:"status"`
+	SimilarityScore pgtype.Float8      `json:"similarity_score"`
+	ProofText       pgtype.Text        `json:"proof_text"`
+	ProofImageUrl   pgtype.Text        `json:"proof_image_url"`
+	AdminNotes      pgtype.Text        `json:"admin_notes"`
+	ProcessedBy     uuid.NullUUID      `json:"processed_by"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 }
 
 type Hub struct {
-	ID        pgtype.UUID
-	Name      string
-	Address   pgtype.Text
-	Longitude pgtype.Text
-	Latitude  pgtype.Text
-	Contact   pgtype.Text
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	ID        uuid.UUID          `json:"id"`
+	Name      string             `json:"name"`
+	Address   pgtype.Text        `json:"address"`
+	Longitude pgtype.Text        `json:"longitude"`
+	Latitude  pgtype.Text        `json:"latitude"`
+	Contact   pgtype.Text        `json:"contact"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 type Item struct {
-	ID                  pgtype.UUID
-	UserID              pgtype.UUID
-	IsAnonymous         pgtype.Bool
-	HubID               pgtype.UUID
-	Name                string
-	ImageUrlOriginal    pgtype.Text
-	ImageUrlRedacted    pgtype.Text
-	Embedding           pgvector.Vector
-	Description         pgtype.Text
-	Status              ItemStatus
-	Tags                []byte
-	Type                ItemType
-	LocationDescription pgtype.Text
-	TimeAt              pgtype.Timestamptz
-	Latitude            pgtype.Text
-	Longitude           pgtype.Text
-	Metadata            []byte
-	CreatedAt           pgtype.Timestamptz
-	UpdatedAt           pgtype.Timestamptz
+	ID                  uuid.UUID          `json:"id"`
+	UserID              uuid.UUID          `json:"user_id"`
+	IsAnonymous         bool               `json:"is_anonymous"`
+	HubID               uuid.NullUUID      `json:"hub_id"`
+	Name                string             `json:"name"`
+	ImageUrlOriginal    pgtype.Text        `json:"image_url_original"`
+	ImageUrlRedacted    pgtype.Text        `json:"image_url_redacted"`
+	Embedding           pgvector.Vector    `json:"embedding"`
+	Description         pgtype.Text        `json:"description"`
+	Status              ItemStatus         `json:"status"`
+	Tags                []byte             `json:"tags"`
+	Type                ItemType           `json:"type"`
+	LocationDescription pgtype.Text        `json:"location_description"`
+	TimeAt              pgtype.Timestamptz `json:"time_at"`
+	Latitude            pgtype.Text        `json:"latitude"`
+	Longitude           pgtype.Text        `json:"longitude"`
+	Metadata            []byte             `json:"metadata"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 }
 
 type User struct {
-	ID           pgtype.UUID
-	Name         string
-	Email        string
-	Phone        pgtype.Text
-	Password     string
-	Role         UserRole
-	RefreshToken pgtype.Text
-	TrustScore   pgtype.Int4
-	IsVerified   bool
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
+	ID           uuid.UUID          `json:"id"`
+	Name         string             `json:"name"`
+	Email        string             `json:"email"`
+	Phone        pgtype.Text        `json:"phone"`
+	Password     string             `json:"password"`
+	Role         UserRole           `json:"role"`
+	RefreshToken pgtype.Text        `json:"refresh_token"`
+	TrustScore   pgtype.Int4        `json:"trust_score"`
+	IsVerified   bool               `json:"is_verified"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
 type UserOnboarding struct {
-	ID         int32
-	Name       string
-	Email      string
-	Password   string
-	Otp        string
-	Attempts   pgtype.Int4
-	VerifiedAt pgtype.Timestamptz
-	CreatedAt  pgtype.Timestamptz
-	ExpiresAt  pgtype.Timestamptz
+	ID         int32              `json:"id"`
+	Name       string             `json:"name"`
+	Email      string             `json:"email"`
+	Password   string             `json:"password"`
+	Otp        string             `json:"otp"`
+	Attempts   pgtype.Int4        `json:"attempts"`
+	VerifiedAt pgtype.Timestamptz `json:"verified_at"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt  time.Time          `json:"expires_at"`
 }
