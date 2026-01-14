@@ -44,7 +44,11 @@ This will start the server and allow you to make changes without restarting it m
 - [ ] Add `/refresh` endpoint for token refresh
 - [ ] Setup Mailer service for sending OTPs
 - [ ] Setup CI pipeline
-- [ ] Add seeding scripts for initial data population
+- [x] Add seeding scripts for initial data population
+- [ ] Update logic of POST `/items` to include image upload
+- [ ] Add POST `/items/:id/image` endpoint to update item images
+- [ ] Generate redacted image URLs after storing original images
+
 
 ## Authors
 - Kiran Rajeev K V - [GitHub](www.github.com/KiranRajeev-KV)
