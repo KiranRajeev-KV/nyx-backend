@@ -154,7 +154,7 @@ SELECT
 FROM items i
 LEFT JOIN users u ON u.id = i.user_id
 LEFT JOIN hubs h ON h.id = i.hub_id
-WHERE i.user_id = $1
+WHERE i.user_id = $1 AND i.status != 'DELETED'
 ORDER BY i.created_at DESC;
 
 -- name: UpdateItemById :one
