@@ -1,0 +1,20 @@
+meta {
+  name: delete-item-by-id
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{BASE_URL}}/items/:id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  id: 019bbcd3-00ca-7f9a-a642-ddbe4def995f
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
