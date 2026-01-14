@@ -8,8 +8,11 @@ import (
 	"github.com/KiranRajeev-KV/nyx-backend/cmd"
 	db "github.com/KiranRajeev-KV/nyx-backend/internal/db/gen"
 	"github.com/KiranRajeev-KV/nyx-backend/internal/logger"
+	"github.com/KiranRajeev-KV/nyx-backend/internal/models"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func FetchItems(c *gin.Context) {
@@ -27,13 +30,13 @@ func FetchItems(c *gin.Context) {
 	}
 	defer conn.Release()
 
-	q := db.New(conn)
+	q := db.New()
 
 	var items []db.FetchItemsByTypeRow
 
 	if !exists || typeParam == "" {
 		// Fetch all items
-		allItems, err := q.FetchAllItems(ctx)
+		allItems, err := q.FetchAllItems(ctx, conn)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 				"message": "Oops! Something happened. Please try again later",
@@ -58,7 +61,7 @@ func FetchItems(c *gin.Context) {
 		}
 
 		// Fetch items by type
-		items, err = q.FetchItemsByType(ctx, db.ItemType(typeParam))
+		items, err = q.FetchItemsByType(ctx, conn, db.ItemType(typeParam))
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 				"message": "Oops! Something happened. Please try again later",
@@ -67,7 +70,7 @@ func FetchItems(c *gin.Context) {
 			return
 		}
 	}
-	
+
 	if len(items) == 0 {
 		items = []db.FetchItemsByTypeRow{}
 	}
@@ -79,7 +82,86 @@ func FetchItems(c *gin.Context) {
 	logger.Log.SuccessCtx(c)
 }
 
-func CreateItem(c *gin.Context) {}
+func CreateItem(c *gin.Context) {
+	req, ok := pkg.ValidateRequest[models.CreateItemRequest](c)
+	if !ok {
+		return
+	}
+
+	userId, ok := pkg.GrabUserId(c, "ITEMS")
+	if !ok {
+		return
+	}
+
+	userUUID, exists := pkg.GrabUuid(c, userId, "ITEMS", "userId")
+	if !exists {
+		return
+	}
+
+	var hubUUID uuid.NullUUID
+	if req.Type == "FOUND" {
+		if req.HubId == nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"message": "Hub ID is required for FOUND items",
+			})
+			return
+		}
+		parsedHubUUID, exists := pkg.GrabUuid(c, *req.HubId, "ITEMS", "hubId")
+		if !exists {
+			return
+		}
+		hubUUID = uuid.NullUUID{UUID: parsedHubUUID, Valid: true}
+	} else {
+		// For LOST items, HubID must be NULL
+		hubUUID = uuid.NullUUID{Valid: false}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, err := cmd.DBPool.Acquire(ctx)
+	if pkg.HandleDbAcquireErr(c, err, "ITEMS") {
+		return
+	}
+	defer conn.Release()
+
+	q := db.New()
+
+	timeAt, err := time.Parse(time.RFC3339, req.TimeAt)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid time format for TimeAt",
+		})
+		logger.Log.WarnCtx(c, "[ITEMS-WARN] Invalid time format")
+		return
+	}
+
+	newItem, err := q.CreateItem(ctx, conn, db.CreateItemParams{
+		UserID:              userUUID,
+		IsAnonymous:         req.IsAnonymous,
+		HubID:               hubUUID,
+		Name:                req.Name,
+		Description:         pgtype.Text{String: req.Description, Valid: true},
+		Type:                db.ItemType(req.Type),
+		LocationDescription: pgtype.Text{String: req.Location, Valid: true},
+		TimeAt:              pgtype.Timestamptz{Time: timeAt, Valid: true},
+		Latitude:            pgtype.Text{String: req.Latitude, Valid: true},
+		Longitude:           pgtype.Text{String: req.Longitude, Valid: true},
+	})
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to create item in DB", err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Item created successfully",
+		"data":    newItem,
+	})
+	logger.Log.SuccessCtx(c)
+}
 
 func FetchItemByID(c *gin.Context) {}
 
