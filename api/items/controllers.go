@@ -423,4 +423,55 @@ func UpdateItemById(c *gin.Context) {
 	logger.Log.SuccessCtx(c)
 }
 
-func DeleteItemById(c *gin.Context) {}
+func DeleteItemById(c *gin.Context) {
+	id := c.Param("id")
+
+	itemUUID, exists := pkg.GrabUuid(c, id, "ITEMS", "itemId")
+	if !exists {
+		return
+	}
+
+	userId, ok := pkg.GrabUserId(c, "ITEMS")
+	if !ok {
+		return
+	}
+
+	userUUID, exists := pkg.GrabUuid(c, userId, "ITEMS", "userId")
+	if !exists {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, err := cmd.DBPool.Acquire(ctx)
+	if pkg.HandleDbAcquireErr(c, err, "ITEMS") {
+		return
+	}
+	defer conn.Release()
+
+	q := db.New()
+
+	_, err = q.SoftDeleteItemById(ctx, conn, db.SoftDeleteItemByIdParams{
+		ID:     itemUUID,
+		UserID: userUUID,
+	})
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+				"message": "Item not found or you are not authorized to delete it",
+			})
+			return
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to delete item in DB", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Item deleted successfully",
+	})
+	logger.Log.SuccessCtx(c)
+}
