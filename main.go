@@ -18,6 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	apiAuth "github.com/KiranRajeev-KV/nyx-backend/api/auth"
+	apiItems "github.com/KiranRajeev-KV/nyx-backend/api/items"
 )
 
 func StartServer() {
@@ -98,6 +99,7 @@ func StartServer() {
 	v1 := router.Group("/api/v1")
 
 	apiAuth.AuthRoutes(v1)
+	apiItems.ItemRoutes(v1)
 
 	// === Server Setup ===
 
