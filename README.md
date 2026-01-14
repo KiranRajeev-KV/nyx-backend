@@ -37,6 +37,14 @@ task dev
 ```
 This will start the server and allow you to make changes without restarting it manually.
 
+## IMPROVEMENTS TO BE MADE
+- [ ] Update the logic of `/verify-otp` endpoint
+- [ ] Add `/resend-otp` endpoint
+- [ ] Add `/reset-password` endpoint
+- [ ] Add `/refresh` endpoint for token refresh
+- [ ] Setup Mailer service for sending OTPs
+- [ ] Setup CI pipeline
+- [ ] Add seeding scripts for initial data population
 
 ## Authors
 - Kiran Rajeev K V - [GitHub](www.github.com/KiranRajeev-KV)
