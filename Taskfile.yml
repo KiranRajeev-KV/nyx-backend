@@ -89,6 +89,11 @@ tasks:
       - docker compose down -v
       - echo "[OK] Database reset complete"
 
+  seed:
+    desc: "Seed the database with dummy data (DEV only)"
+    cmds:
+      - go run internal/seed/seed.go
+
   # ===== Migrations =====
   status:
     desc: "Show migration status"

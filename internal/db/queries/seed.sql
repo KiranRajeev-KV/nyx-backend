@@ -1,0 +1,27 @@
+-- name: SeedUser :one
+INSERT INTO users (name, email, password, role, is_verified, trust_score)
+VALUES ($1, $2, $3, $4, true, $5)
+ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
+RETURNING id;
+
+-- name: SeedHub :one
+INSERT INTO hubs (name, address, latitude, longitude, contact)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id;
+
+-- name: SeedItem :one
+INSERT INTO items (
+    user_id, hub_id, name, description, type, status, 
+    location_description, latitude, longitude, time_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id;
+
+-- name: SeedClaim :one
+INSERT INTO claims (item_id, claimant_id, status, proof_text, similarity_score)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id;
+
+-- name: SeedAuditLog :exec
+INSERT INTO audit_logs (actor_id, action, target_type, target_id)
+VALUES ($1, $2, $3, $4);
