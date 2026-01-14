@@ -49,7 +49,7 @@ func GrabUuid(c *gin.Context, uuidStr string, route string, entity string) (uuid
 	uuid, err := uuid.Parse(uuidStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "The request is malformed.",
+			"message": "Invalid " + entity + " format",
 		})
 		msg := fmt.Sprintf("[%s-ERROR]: Failed to parse %s UUID", route, entity)
 		logger.Log.ErrorCtx(c, msg, err)
