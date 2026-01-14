@@ -18,10 +18,14 @@ SELECT
     description,
     image_url_redacted,
     status,
+    type,
     created_at,
     updated_at
 FROM
     items
+WHERE
+    status = 'OPEN'
+    OR status = 'PENDING_CLAIM'
 ORDER BY
     created_at DESC
 `
@@ -32,6 +36,7 @@ type FetchAllItemsRow struct {
 	Description      pgtype.Text
 	ImageUrlRedacted pgtype.Text
 	Status           ItemStatus
+	Type             ItemType
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
 }
@@ -51,6 +56,7 @@ func (q *Queries) FetchAllItems(ctx context.Context) ([]FetchAllItemsRow, error)
 			&i.Description,
 			&i.ImageUrlRedacted,
 			&i.Status,
+			&i.Type,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -71,12 +77,15 @@ SELECT
     description,
     image_url_redacted,
     status,
+    type,
     created_at,
     updated_at
 FROM
     items
 WHERE
     type = $1
+    AND (status = 'OPEN'
+        OR status = 'PENDING_CLAIM')
 ORDER BY
     created_at DESC
 `
@@ -87,6 +96,7 @@ type FetchItemsByTypeRow struct {
 	Description      pgtype.Text
 	ImageUrlRedacted pgtype.Text
 	Status           ItemStatus
+	Type             ItemType
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
 }
@@ -106,6 +116,7 @@ func (q *Queries) FetchItemsByType(ctx context.Context, type_ ItemType) ([]Fetch
 			&i.Description,
 			&i.ImageUrlRedacted,
 			&i.Status,
+			&i.Type,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {

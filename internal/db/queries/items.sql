@@ -5,6 +5,7 @@ SELECT
     description,
     image_url_redacted,
     status,
+    type,
     created_at,
     updated_at
 FROM
@@ -22,6 +23,7 @@ SELECT
     description,
     image_url_redacted,
     status,
+    type,
     created_at,
     updated_at
 FROM
