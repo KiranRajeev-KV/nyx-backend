@@ -19,7 +19,7 @@ func ItemRoutes(router *gin.RouterGroup) {
 		items.GET("/me", mw.Auth, mw.CheckUserRole, FetchAllItemsByUserId)
 
 		// Update & delete — must be the owner
-		items.PUT("/:id", mw.Auth, mw.CheckUserRole, UpdateItemById)
+		items.PATCH("/:id", mw.Auth, mw.CheckUserRole, UpdateItemById)
 		items.DELETE("/:id", mw.Auth, mw.CheckUserRole, DeleteItemById)
 	}
 }
