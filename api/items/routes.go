@@ -8,10 +8,18 @@ import (
 func ItemRoutes(router *gin.RouterGroup) {
 	items := router.Group("/items")
 	{
+		// Public read‑only (auth required)
 		items.GET("/", mw.Auth, FetchItems)
-		items.POST("/", mw.Auth, CreateItem)
-		items.GET("/:id", mw.Auth, FetchItemByID)
-		items.PUT("/:id", mw.Auth, UpdateItemByID)
-		items.DELETE("/:id", mw.Auth, DeleteItemByID)
+		items.GET("/:id", mw.Auth, FetchItemById)
+
+		// Create (auth + user role)
+		items.POST("/", mw.Auth, mw.CheckUserRole, CreateItem)
+
+		// “My Items” — only the authenticated user’s items
+		items.GET("/me", mw.Auth, mw.CheckUserRole, FetchAllItemsByUserId)
+
+		// Update & delete — must be the owner
+		items.PUT("/:id", mw.Auth, mw.CheckUserRole, UpdateItemById)
+		items.DELETE("/:id", mw.Auth, mw.CheckUserRole, DeleteItemById)
 	}
 }
