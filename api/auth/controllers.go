@@ -186,21 +186,45 @@ func VerifyOTP(c *gin.Context) {
 		return
 	}
 
-	// check OTP validity and expiry
-	if onboarding.Otp != req.OTP || time.Now().After(onboarding.ExpiresAt) {
+	// check expiry
+	if time.Now().After(onboarding.ExpiresAt) {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"message": "Invalid or expired OTP. Please try again.",
+			"message": "OTP has expired. Please register again.",
 		})
-		logger.Log.InfoCtx(c, "[VERIFY-OTP-INFO]: Invalid or expired OTP attempt")
+		logger.Log.InfoCtx(c, "[VERIFY-OTP-INFO]: Expired OTP attempt")
+		return
+	}
+
+	// check OTP validity
+	if onboarding.Otp != req.OTP {
+		// Increment attempts
+		err = q.IncrementOnboardingAttempts(ctx, tx, tempEmail)
+		if err != nil {
+			logger.Log.ErrorCtx(c, "[VERIFY-OTP-ERROR]: Failed to increment attempts", err)
+		}
+
+		if onboarding.Attempts.Int32 >= 3 {
+			_ = q.DeleteOnboardingByEmail(ctx, tx, tempEmail)
+			_ = tx.Commit(ctx)
+			pkg.ClearTempCookie(c)
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"message": "Too many failed attempts. Please register again.",
+			})
+			return
+		}
+
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"message": "Invalid OTP. Please try again.",
+		})
+		logger.Log.InfoCtx(c, "[VERIFY-OTP-INFO]: Invalid OTP attempt")
 		return
 	}
 
 	// create user in users table
 	_, err = q.CreateUser(ctx, tx, db.CreateUserParams{
-		Name:       onboarding.Name,
-		Email:      onboarding.Email,
-		Password:   onboarding.Password,
-		IsVerified: true,
+		Name:     onboarding.Name,
+		Email:    onboarding.Email,
+		Password: onboarding.Password,
 	})
 	if err != nil {
 		// handle unique constraint violation (email) just in case

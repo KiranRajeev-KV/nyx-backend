@@ -50,7 +50,6 @@ CREATE TABLE users(
     ROLE user_role NOT NULL DEFAULT 'USER',
     refresh_token text,
     trust_score integer DEFAULT 100,
-    is_verified boolean NOT NULL DEFAULT FALSE,
     created_at timestamptz DEFAULT NOW(),
     updated_at timestamptz DEFAULT NOW()
 );
@@ -65,7 +64,6 @@ CREATE TABLE user_onboarding(
     password TEXT NOT NULL,
     otp text NOT NULL,
     attempts integer DEFAULT 0,
-    verified_at timestamptz,
     created_at timestamptz DEFAULT NOW(),
     expires_at timestamptz NOT NULL
 );

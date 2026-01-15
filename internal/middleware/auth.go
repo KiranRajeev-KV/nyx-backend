@@ -51,7 +51,7 @@ func Auth(c *gin.Context) {
 		refreshTokenClaims := validToken.Claims()
 		userId, _ := refreshTokenClaims["aud"].(string)
 		email, _ := refreshTokenClaims["jti"].(string)
-		role := refreshTokenClaims["role"].(db.UserRole)
+		role := db.UserRole(refreshTokenClaims["role"].(string))
 
 		// Creating and setting auth token, so it can be used for future requests
 		authToken, err := pkg.CreateAuthToken(userId, email, role)

@@ -21,8 +21,7 @@ SELECT
     FROM
       users
     WHERE
-      email = $1
-      AND is_verified = TRUE)
+      email = $1)
 `
 
 func (q *Queries) CheckEmailExists(ctx context.Context, db DBTX, email string) (bool, error) {
@@ -67,17 +66,16 @@ func (q *Queries) CheckRefreshTokenQuery(ctx context.Context, db DBTX, email str
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users(name, email, password, is_verified)
-  VALUES ($1, $2, $3, $4)
+INSERT INTO users(name, email, password)
+  VALUES ($1, $2, $3)
 RETURNING
-  id, name, email, role, trust_score, is_verified, created_at, updated_at
+  id, name, email, role, trust_score, created_at, updated_at
 `
 
 type CreateUserParams struct {
-	Name       string `json:"name"`
-	Email      string `json:"email"`
-	Password   string `json:"password"`
-	IsVerified bool   `json:"is_verified"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type CreateUserRow struct {
@@ -86,18 +84,12 @@ type CreateUserRow struct {
 	Email      string             `json:"email"`
 	Role       UserRole           `json:"role"`
 	TrustScore pgtype.Int4        `json:"trust_score"`
-	IsVerified bool               `json:"is_verified"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, db DBTX, arg CreateUserParams) (CreateUserRow, error) {
-	row := db.QueryRow(ctx, createUser,
-		arg.Name,
-		arg.Email,
-		arg.Password,
-		arg.IsVerified,
-	)
+	row := db.QueryRow(ctx, createUser, arg.Name, arg.Email, arg.Password)
 	var i CreateUserRow
 	err := row.Scan(
 		&i.ID,
@@ -105,7 +97,6 @@ func (q *Queries) CreateUser(ctx context.Context, db DBTX, arg CreateUserParams)
 		&i.Email,
 		&i.Role,
 		&i.TrustScore,
-		&i.IsVerified,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -161,24 +152,21 @@ SELECT
   PASSWORD,
   otp,
   attempts,
-  verified_at,
   expires_at
 FROM
   user_onboarding
 WHERE
   email = $1
-  AND verified_at IS NULL
 `
 
 type GetPendingOnboardingByEmailRow struct {
-	ID         int32              `json:"id"`
-	Name       string             `json:"name"`
-	Email      string             `json:"email"`
-	Password   string             `json:"password"`
-	Otp        string             `json:"otp"`
-	Attempts   pgtype.Int4        `json:"attempts"`
-	VerifiedAt pgtype.Timestamptz `json:"verified_at"`
-	ExpiresAt  time.Time          `json:"expires_at"`
+	ID        int32       `json:"id"`
+	Name      string      `json:"name"`
+	Email     string      `json:"email"`
+	Password  string      `json:"password"`
+	Otp       string      `json:"otp"`
+	Attempts  pgtype.Int4 `json:"attempts"`
+	ExpiresAt time.Time   `json:"expires_at"`
 }
 
 func (q *Queries) GetPendingOnboardingByEmail(ctx context.Context, db DBTX, email string) (GetPendingOnboardingByEmailRow, error) {
@@ -191,7 +179,6 @@ func (q *Queries) GetPendingOnboardingByEmail(ctx context.Context, db DBTX, emai
 		&i.Password,
 		&i.Otp,
 		&i.Attempts,
-		&i.VerifiedAt,
 		&i.ExpiresAt,
 	)
 	return i, err
@@ -205,14 +192,12 @@ SELECT
   PASSWORD,
   ROLE,
   trust_score,
-  is_verified,
   created_at,
   updated_at
 FROM
   users
 WHERE
   email = $1
-  AND is_verified = TRUE
 `
 
 type GetUserByEmailRow struct {
@@ -222,7 +207,6 @@ type GetUserByEmailRow struct {
 	Password   string             `json:"password"`
 	Role       UserRole           `json:"role"`
 	TrustScore pgtype.Int4        `json:"trust_score"`
-	IsVerified bool               `json:"is_verified"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
 }
@@ -237,11 +221,21 @@ func (q *Queries) GetUserByEmail(ctx context.Context, db DBTX, email string) (Ge
 		&i.Password,
 		&i.Role,
 		&i.TrustScore,
-		&i.IsVerified,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const incrementOnboardingAttempts = `-- name: IncrementOnboardingAttempts :exec
+UPDATE user_onboarding
+SET attempts = attempts + 1
+WHERE email = $1
+`
+
+func (q *Queries) IncrementOnboardingAttempts(ctx context.Context, db DBTX, email string) error {
+	_, err := db.Exec(ctx, incrementOnboardingAttempts, email)
+	return err
 }
 
 const revokeRefreshTokenQuery = `-- name: RevokeRefreshTokenQuery :one
