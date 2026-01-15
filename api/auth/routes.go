@@ -13,8 +13,9 @@ func AuthRoutes(router *gin.RouterGroup) {
 		auth.POST("/resend-otp", mw.TempAuth, ResendOTP)
 		auth.POST("/login", LoginUser)
 
-		auth.GET("/refresh", mw.Auth, RefreshToken)
-		// TODO: auth.POST("/reset-password", mw.TempAuth, ResetPassword)
+		auth.POST("/refresh", RefreshToken)
+		auth.POST("/forgot-password", ForgotPassword)
+		auth.POST("/reset-password", mw.TempAuth, ResetPassword)
 		auth.GET("/session", mw.Auth, FetchUserSession)
 		auth.GET("/logout", mw.Auth, LogoutUser)
 

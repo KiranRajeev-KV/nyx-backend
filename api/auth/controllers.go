@@ -197,20 +197,23 @@ func VerifyOTP(c *gin.Context) {
 
 	// check OTP validity
 	if onboarding.Otp != req.OTP {
-		// Increment attempts
-		err = q.IncrementOnboardingAttempts(ctx, tx, tempEmail)
-		if err != nil {
-			logger.Log.ErrorCtx(c, "[VERIFY-OTP-ERROR]: Failed to increment attempts", err)
-		}
+		// Increment attempts in DB
+		_ = q.IncrementOnboardingAttempts(ctx, tx, tempEmail)
 
-		if onboarding.Attempts.Int32 >= 3 {
+		// Check against the value we just fetched + 1
+		if onboarding.Attempts.Int32 >= 2 {
 			_ = q.DeleteOnboardingByEmail(ctx, tx, tempEmail)
-			_ = tx.Commit(ctx)
+			_ = tx.Commit(ctx) // Commit the deletion
 			pkg.ClearTempCookie(c)
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"message": "Too many failed attempts. Please register again.",
 			})
 			return
+		}
+
+		// Commit the increment before returning
+		if err := tx.Commit(ctx); err != nil {
+			logger.Log.ErrorCtx(c, "[VERIFY-OTP-ERROR]: Failed to commit attempt increment", err)
 		}
 
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -462,6 +465,190 @@ func RefreshToken(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Token refreshed successfully.",
+	})
+	logger.Log.SuccessCtx(c)
+}
+
+func ForgotPassword(c *gin.Context) {
+	req, ok := pkg.ValidateRequest[models.ForgotPasswordRequest](c)
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	tx, err := cmd.DBPool.Begin(ctx)
+	if pkg.HandleDbTxnErr(c, err, "FORGOT-PASSWORD") {
+		return
+	}
+	defer pkg.RollbackTx(c, tx, ctx, "FORGOT-PASSWORD")
+
+	q := db.New()
+
+	// check if user exists
+	exists, err := q.CheckEmailExists(ctx, tx, req.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later.",
+		})
+		logger.Log.ErrorCtx(c, "[FORGOT-PASSWORD-ERROR]: Failed to check existing email", err)
+		return
+	}
+	if !exists {
+		// return success to prevent email enumeration
+		c.JSON(http.StatusOK, gin.H{
+			"message": "If your email is registered, you will receive an OTP.",
+		})
+		return
+	}
+
+	// generate OTP + expiry
+	otpStr, _, err := pkg.GenerateOTP()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later.",
+		})
+		logger.Log.ErrorCtx(c, "[FORGOT-PASSWORD-ERROR]: Unable to generate OTP", err)
+		return
+	}
+	expiry := time.Now().Add(10 * time.Minute)
+
+	// upsert reset record
+	result, err := q.UpsertPasswordReset(ctx, tx, db.UpsertPasswordResetParams{
+		Email: req.Email,
+		Otp:   otpStr,
+		ExpiresAt: pgtype.Timestamptz{
+			Time:  expiry,
+			Valid: true,
+		},
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later.",
+		})
+		logger.Log.ErrorCtx(c, "[FORGOT-PASSWORD-ERROR]: Failed to upsert reset record", err)
+		return
+	}
+
+	// commit transaction
+	err = tx.Commit(ctx)
+	if pkg.HandleDbTxnCommitErr(c, err, "FORGOT-PASSWORD") {
+		return
+	}
+
+	// set temp token cookie
+	tempToken := pkg.CreateTempToken(result.Email)
+	pkg.SetTempCookie(c, tempToken)
+
+	// TODO: send OTP via email
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "If your email is registered, you will receive an OTP.",
+	})
+	logger.Log.SuccessCtx(c)
+}
+
+func ResetPassword(c *gin.Context) {
+	req, ok := pkg.ValidateRequest[models.ResetPasswordRequest](c)
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	tempEmail, valid := pkg.GetEmail(c, "RESET-PASSWORD")
+	if !valid {
+		return
+	}
+
+	tx, err := cmd.DBPool.Begin(ctx)
+	if pkg.HandleDbTxnErr(c, err, "RESET-PASSWORD") {
+		return
+	}
+	defer pkg.RollbackTx(c, tx, ctx, "RESET-PASSWORD")
+
+	q := db.New()
+
+	// fetch reset record
+	reset, err := q.GetPasswordResetByEmail(ctx, tx, tempEmail)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Reset session not found or expired. Please try again.",
+		})
+		return
+	}
+
+	// check expiry
+	if time.Now().After(reset.ExpiresAt) {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"message": "OTP has expired. Please try again.",
+		})
+		return
+	}
+
+	// check OTP
+	if reset.Otp != req.OTP {
+		_ = q.IncrementPasswordResetAttempts(ctx, tx, tempEmail)
+
+		if reset.Attempts.Int32 >= 2 {
+			_ = q.DeletePasswordResetByEmail(ctx, tx, tempEmail)
+			_ = tx.Commit(ctx)
+			pkg.ClearTempCookie(c)
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"message": "Too many failed attempts. Please restart the process.",
+			})
+			return
+		}
+
+		// Commit the increment
+		if err := tx.Commit(ctx); err != nil {
+			logger.Log.ErrorCtx(c, "[RESET-PASSWORD-ERROR]: Failed to commit attempt increment", err)
+		}
+
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"message": "Invalid OTP. Please try again.",
+		})
+		logger.Log.WarnCtx(c, "Invalid OTP attempt during password reset")
+		return
+	}
+
+	// hash new password
+	hashedPass, err := pkg.Hash(req.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later.",
+		})
+		logger.Log.ErrorCtx(c, "[RESET-PASSWORD-ERROR]: Failed to hash password", err)
+		return
+	}
+
+	// update user password
+	err = q.UpdateUserPasswordByEmail(ctx, tx, db.UpdateUserPasswordByEmailParams{
+		Email:    tempEmail,
+		Password: hashedPass,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later.",
+		})
+		logger.Log.ErrorCtx(c, "[RESET-PASSWORD-ERROR]: Failed to update user password", err)
+	}
+
+	// cleanup
+	_ = q.DeletePasswordResetByEmail(ctx, tx, tempEmail)
+
+	// commit
+	err = tx.Commit(ctx)
+	if pkg.HandleDbTxnCommitErr(c, err, "RESET-PASSWORD") {
+		return
+	}
+
+	pkg.ClearTempCookie(c)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Password reset successfully. You can now login.",
 	})
 	logger.Log.SuccessCtx(c)
 }

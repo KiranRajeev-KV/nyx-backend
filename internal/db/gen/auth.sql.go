@@ -113,6 +113,16 @@ func (q *Queries) DeleteOnboardingByEmail(ctx context.Context, db DBTX, email st
 	return err
 }
 
+const deletePasswordResetByEmail = `-- name: DeletePasswordResetByEmail :exec
+DELETE FROM password_resets
+WHERE email = $1
+`
+
+func (q *Queries) DeletePasswordResetByEmail(ctx context.Context, db DBTX, email string) error {
+	_, err := db.Exec(ctx, deletePasswordResetByEmail, email)
+	return err
+}
+
 const fetchUserSession = `-- name: FetchUserSession :one
 SELECT
   id,
@@ -140,6 +150,40 @@ func (q *Queries) FetchUserSession(ctx context.Context, db DBTX, email string) (
 		&i.Name,
 		&i.Email,
 		&i.Role,
+	)
+	return i, err
+}
+
+const getPasswordResetByEmail = `-- name: GetPasswordResetByEmail :one
+SELECT
+  id,
+  email,
+  otp,
+  attempts,
+  expires_at
+FROM
+  password_resets
+WHERE
+  email = $1
+`
+
+type GetPasswordResetByEmailRow struct {
+	ID        int32       `json:"id"`
+	Email     string      `json:"email"`
+	Otp       string      `json:"otp"`
+	Attempts  pgtype.Int4 `json:"attempts"`
+	ExpiresAt time.Time   `json:"expires_at"`
+}
+
+func (q *Queries) GetPasswordResetByEmail(ctx context.Context, db DBTX, email string) (GetPasswordResetByEmailRow, error) {
+	row := db.QueryRow(ctx, getPasswordResetByEmail, email)
+	var i GetPasswordResetByEmailRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Otp,
+		&i.Attempts,
+		&i.ExpiresAt,
 	)
 	return i, err
 }
@@ -238,6 +282,17 @@ func (q *Queries) IncrementOnboardingAttempts(ctx context.Context, db DBTX, emai
 	return err
 }
 
+const incrementPasswordResetAttempts = `-- name: IncrementPasswordResetAttempts :exec
+UPDATE password_resets
+SET attempts = attempts + 1
+WHERE email = $1
+`
+
+func (q *Queries) IncrementPasswordResetAttempts(ctx context.Context, db DBTX, email string) error {
+	_, err := db.Exec(ctx, incrementPasswordResetAttempts, email)
+	return err
+}
+
 const revokeRefreshTokenQuery = `-- name: RevokeRefreshTokenQuery :one
 UPDATE
   users
@@ -274,6 +329,65 @@ type SetUserRefreshTokenParams struct {
 func (q *Queries) SetUserRefreshToken(ctx context.Context, db DBTX, arg SetUserRefreshTokenParams) error {
 	_, err := db.Exec(ctx, setUserRefreshToken, arg.RefreshToken, arg.ID)
 	return err
+}
+
+const updateUserPasswordByEmail = `-- name: UpdateUserPasswordByEmail :exec
+UPDATE users
+SET password = $2, updated_at = NOW()
+WHERE email = $1
+`
+
+type UpdateUserPasswordByEmailParams struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (q *Queries) UpdateUserPasswordByEmail(ctx context.Context, db DBTX, arg UpdateUserPasswordByEmailParams) error {
+	_, err := db.Exec(ctx, updateUserPasswordByEmail, arg.Email, arg.Password)
+	return err
+}
+
+const upsertPasswordReset = `-- name: UpsertPasswordReset :one
+INSERT INTO password_resets(email, otp, expires_at, attempts)
+  VALUES ($1, $2, $3, 0)
+ON CONFLICT (email)
+  DO UPDATE SET
+    otp = EXCLUDED.otp,
+    expires_at = EXCLUDED.expires_at,
+    attempts = 0
+  RETURNING
+    id,
+    email,
+    otp,
+    expires_at,
+    attempts
+`
+
+type UpsertPasswordResetParams struct {
+	Email     string             `json:"email"`
+	Otp       string             `json:"otp"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+}
+
+type UpsertPasswordResetRow struct {
+	ID        int32       `json:"id"`
+	Email     string      `json:"email"`
+	Otp       string      `json:"otp"`
+	ExpiresAt time.Time   `json:"expires_at"`
+	Attempts  pgtype.Int4 `json:"attempts"`
+}
+
+func (q *Queries) UpsertPasswordReset(ctx context.Context, db DBTX, arg UpsertPasswordResetParams) (UpsertPasswordResetRow, error) {
+	row := db.QueryRow(ctx, upsertPasswordReset, arg.Email, arg.Otp, arg.ExpiresAt)
+	var i UpsertPasswordResetRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Otp,
+		&i.ExpiresAt,
+		&i.Attempts,
+	)
+	return i, err
 }
 
 const upsertUserOnboarding = `-- name: UpsertUserOnboarding :one

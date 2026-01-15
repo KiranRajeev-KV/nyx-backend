@@ -286,6 +286,15 @@ type Item struct {
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 }
 
+type PasswordReset struct {
+	ID        int32              `json:"id"`
+	Email     string             `json:"email"`
+	Otp       string             `json:"otp"`
+	Attempts  pgtype.Int4        `json:"attempts"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt time.Time          `json:"expires_at"`
+}
+
 type User struct {
 	ID           uuid.UUID          `json:"id"`
 	Name         string             `json:"name"`

@@ -69,6 +69,18 @@ CREATE TABLE user_onboarding(
 );
 
 -- +goose StatementEnd
+-- 2.1 PasswordResets
+-- +goose StatementBegin
+CREATE TABLE password_resets(
+    id serial PRIMARY KEY,
+    email text UNIQUE NOT NULL REFERENCES users(email) ON DELETE CASCADE,
+    otp text NOT NULL,
+    attempts integer DEFAULT 0,
+    created_at timestamptz DEFAULT NOW(),
+    expires_at timestamptz NOT NULL
+);
+
+-- +goose StatementEnd
 -- 3. Hubs
 -- +goose StatementBegin
 CREATE TABLE hubs(
@@ -168,6 +180,8 @@ DROP TABLE IF EXISTS claims;
 DROP TABLE IF EXISTS items;
 
 DROP TABLE IF EXISTS hubs;
+
+DROP TABLE IF EXISTS password_resets;
 
 DROP TABLE IF EXISTS user_onboarding;
 
