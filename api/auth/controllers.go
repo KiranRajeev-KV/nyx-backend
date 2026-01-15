@@ -198,12 +198,26 @@ func VerifyOTP(c *gin.Context) {
 	// check OTP validity
 	if onboarding.Otp != req.OTP {
 		// Increment attempts in DB
-		_ = q.IncrementOnboardingAttempts(ctx, tx, tempEmail)
+		err = q.IncrementOnboardingAttempts(ctx, tx, tempEmail)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": "Oops! Something happened. Please try again later.",
+			})
+			logger.Log.ErrorCtx(c, "[VERIFY-OTP-ERROR]: Failed to increment onboarding attempts", err)
+			return
+		}
 
 		// Check against the value we just fetched + 1
 		if onboarding.Attempts.Int32 >= 2 {
-			_ = q.DeleteOnboardingByEmail(ctx, tx, tempEmail)
-			_ = tx.Commit(ctx) // Commit the deletion
+			err = q.DeleteOnboardingByEmail(ctx, tx, tempEmail)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"message": "Oops! Something happened. Please try again later.",
+				})
+				logger.Log.ErrorCtx(c, "[VERIFY-OTP-ERROR]: Failed to delete onboarding record", err)
+				return
+			}
+			err = tx.Commit(ctx) // Commit the deletion
 			pkg.ClearTempCookie(c)
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"message": "Too many failed attempts. Please register again.",
@@ -217,7 +231,8 @@ func VerifyOTP(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"message": "Invalid OTP. Please try again.",
+			"message":   "Invalid OTP. Please try again.",
+			"expiry_at": onboarding.ExpiresAt,
 		})
 		logger.Log.InfoCtx(c, "[VERIFY-OTP-INFO]: Invalid OTP attempt")
 		return
@@ -336,7 +351,8 @@ func ResendOTP(c *gin.Context) {
 	// TODO: send OTP via email (outside transaction)
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "A new OTP has been sent to your email.",
+		"message":   "A new OTP has been sent to your email.",
+		"expiry_at": expiry,
 	})
 	logger.Log.SuccessCtx(c)
 }
@@ -420,6 +436,32 @@ func LoginUser(c *gin.Context) {
 }
 
 func LogoutUser(c *gin.Context) {
+	email, ok := pkg.GetEmail(c, "LOGOUT")
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, err := cmd.DBPool.Acquire(ctx)
+	if pkg.HandleDbAcquireErr(c, err, "LOGOUT") {
+		return
+	}
+	defer conn.Release()
+
+	q := db.New()
+
+	// clear refresh token in db
+	_, err = q.RevokeRefreshTokenQuery(c, conn, email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later.",
+		})
+		logger.Log.ErrorCtx(c, "[LOGOUT-ERROR]: Failed to revoke refresh token in DB", err)
+		return
+	}
+
 	pkg.NullifyCookies(c)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -497,8 +539,10 @@ func ForgotPassword(c *gin.Context) {
 	}
 	if !exists {
 		// return success to prevent email enumeration
+		// we return a dummy expiry to keep response shape identical
 		c.JSON(http.StatusOK, gin.H{
-			"message": "If your email is registered, you will receive an OTP.",
+			"message":   "If your email is registered, you will receive an OTP.",
+			"expiry_at": time.Now().Add(10 * time.Minute),
 		})
 		return
 	}
@@ -545,6 +589,7 @@ func ForgotPassword(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "If your email is registered, you will receive an OTP.",
+		"expiry_at": expiry,
 	})
 	logger.Log.SuccessCtx(c)
 }
@@ -608,7 +653,8 @@ func ResetPassword(c *gin.Context) {
 		}
 
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"message": "Invalid OTP. Please try again.",
+			"message":   "Invalid OTP. Please try again.",
+			"expiry_at": reset.ExpiresAt,
 		})
 		logger.Log.WarnCtx(c, "Invalid OTP attempt during password reset")
 		return
@@ -634,10 +680,18 @@ func ResetPassword(c *gin.Context) {
 			"message": "Oops! Something happened. Please try again later.",
 		})
 		logger.Log.ErrorCtx(c, "[RESET-PASSWORD-ERROR]: Failed to update user password", err)
+		return
 	}
 
 	// cleanup
-	_ = q.DeletePasswordResetByEmail(ctx, tx, tempEmail)
+	err = q.DeletePasswordResetByEmail(ctx, tx, tempEmail)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later.",
+		})
+		logger.Log.ErrorCtx(c, "[RESET-PASSWORD-ERROR]: Failed to delete password reset record", err)
+		return
+	}
 
 	// commit
 	err = tx.Commit(ctx)
