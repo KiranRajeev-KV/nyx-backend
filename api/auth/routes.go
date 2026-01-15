@@ -9,8 +9,8 @@ func AuthRoutes(router *gin.RouterGroup) {
 	auth := router.Group("/auth")
 	{
 		auth.POST("/register", RegisterUser)
-		auth.POST("/verify-otp", mw.TempAuth, VerifyOTP) // TODO: Update logic of this endpoint
-		// TODO: auth.GET("/resend-otp", mw.TempAuth, SendOTP)
+		auth.POST("/verify-otp", mw.TempAuth, VerifyOTP)
+		auth.POST("/resend-otp", mw.TempAuth, ResendOTP)
 		auth.POST("/login", LoginUser)
 
 		// TODO: auth.POST("/refresh", mw.Auth, RefreshToken)

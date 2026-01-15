@@ -267,6 +267,78 @@ func VerifyOTP(c *gin.Context) {
 	logger.Log.SuccessCtx(c)
 }
 
+func ResendOTP(c *gin.Context) {
+	tempEmail, valid := pkg.GetEmail(c, "RESEND-OTP")
+	if !valid {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	tx, err := cmd.DBPool.Begin(ctx)
+	if pkg.HandleDbTxnErr(c, err, "RESEND-OTP") {
+		return
+	}
+	defer pkg.RollbackTx(c, tx, ctx, "RESEND-OTP")
+
+	q := db.New()
+
+	// 1. Fetch existing onboarding data
+	onboarding, err := q.GetPendingOnboardingByEmail(ctx, tx, tempEmail)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Onboarding session not found. Please register again.",
+		})
+		logger.Log.InfoCtx(c, "[RESEND-OTP-INFO]: No pending onboarding found for email")
+		return
+	}
+
+	// 2. Generate new OTP + expiry
+	otpStr, _, err := pkg.GenerateOTP()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later.",
+		})
+		logger.Log.ErrorCtx(c, "[RESEND-OTP-ERROR]: Unable to generate OTP", err)
+		return
+	}
+	expiry := time.Now().Add(5 * time.Minute)
+
+	// 3. Upsert (update) the record with new OTP and reset attempts
+	_, err = q.UpsertUserOnboarding(ctx, tx, db.UpsertUserOnboardingParams{
+		Name:     onboarding.Name,
+		Email:    onboarding.Email,
+		Password: onboarding.Password,
+		Otp:      otpStr,
+		ExpiresAt: pgtype.Timestamptz{
+			Time:  expiry,
+			Valid: true,
+		},
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later.",
+		})
+		logger.Log.ErrorCtx(c, "[RESEND-OTP-ERROR]: Failed to update user onboarding", err)
+		return
+	}
+
+	// 4. Commit transaction
+	err = tx.Commit(ctx)
+	if pkg.HandleDbTxnCommitErr(c, err, "RESEND-OTP") {
+		return
+	}
+
+	// TODO: send OTP via email (outside transaction)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "A new OTP has been sent to your email.",
+		"expiry_at": expiry,
+	})
+	logger.Log.SuccessCtx(c)
+}
+
 func LoginUser(c *gin.Context) {
 	req, ok := pkg.ValidateRequest[models.LoginUserRequest](c)
 	if !ok {
