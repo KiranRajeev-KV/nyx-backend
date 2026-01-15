@@ -333,8 +333,7 @@ func ResendOTP(c *gin.Context) {
 	// TODO: send OTP via email (outside transaction)
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":   "A new OTP has been sent to your email.",
-		"expiry_at": expiry,
+		"message": "A new OTP has been sent to your email.",
 	})
 	logger.Log.SuccessCtx(c)
 }
