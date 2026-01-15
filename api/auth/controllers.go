@@ -425,6 +425,47 @@ func LogoutUser(c *gin.Context) {
 	logger.Log.SuccessCtx(c)
 }
 
+func RefreshToken(c *gin.Context) {
+	refreshToken, err := c.Cookie("refresh_token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"message": "Session expired. Please login again.",
+		})
+		logger.Log.InfoCtx(c, "[REFRESH-INFO]: Refresh token cookie missing")
+		return
+	}
+
+	validToken, err := pkg.VerifyRefreshToken(c, refreshToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"message": "Invalid session. Please login again.",
+		})
+		logger.Log.ErrorCtx(c, "[REFRESH-ERROR]: Failed to verify refresh token", err)
+		return
+	}
+
+	claims := validToken.Claims()
+	userId := claims["aud"].(string)
+	email := claims["jti"].(string)
+	role := db.UserRole(claims["role"].(string))
+
+	newAccessToken, err := pkg.CreateAuthToken(userId, email, role)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later.",
+		})
+		logger.Log.ErrorCtx(c, "[REFRESH-ERROR]: Failed to create new access token", err)
+		return
+	}
+
+	pkg.SetAuthCookie(c, newAccessToken)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Token refreshed successfully.",
+	})
+	logger.Log.SuccessCtx(c)
+}
+
 func FetchUserSession(c *gin.Context) {
 	email, ok := pkg.GetEmail(c, "SESSION")
 	if !ok {
