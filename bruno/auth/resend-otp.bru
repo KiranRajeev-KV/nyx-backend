@@ -1,11 +1,11 @@
 meta {
-  name: session
+  name: resend-otp
   type: http
-  seq: 7
+  seq: 3
 }
 
-get {
-  url: {{BASE_URL}}/auth/session
+post {
+  url: {{BASE_URL}}/auth/resend-otp
   body: none
   auth: inherit
 }

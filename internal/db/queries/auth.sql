@@ -25,8 +25,7 @@ SELECT
     FROM
       users
     WHERE
-      email = $1
-      AND is_verified = TRUE);
+      email = $1);
 
 -- name: CheckPendingOnboarding :one
 SELECT
@@ -64,19 +63,22 @@ SELECT
   PASSWORD,
   otp,
   attempts,
-  verified_at,
   expires_at
 FROM
   user_onboarding
 WHERE
-  email = $1
-  AND verified_at IS NULL;
+  email = $1;
+
+-- name: IncrementOnboardingAttempts :exec
+UPDATE user_onboarding
+SET attempts = attempts + 1
+WHERE email = $1;
 
 -- name: CreateUser :one
-INSERT INTO users(name, email, password, is_verified)
-  VALUES ($1, $2, $3, $4)
+INSERT INTO users(name, email, password)
+  VALUES ($1, $2, $3)
 RETURNING
-  id, name, email, role, trust_score, is_verified, created_at, updated_at;
+  id, name, email, role, trust_score, created_at, updated_at;
 
 -- name: DeleteOnboardingByEmail :exec
 DELETE FROM user_onboarding
@@ -90,14 +92,12 @@ SELECT
   PASSWORD,
   ROLE,
   trust_score,
-  is_verified,
   created_at,
   updated_at
 FROM
   users
 WHERE
-  email = $1
-  AND is_verified = TRUE;
+  email = $1;
 
 -- name: SetUserRefreshToken :exec
 UPDATE
@@ -118,3 +118,44 @@ FROM
   users
 WHERE
   email = $1;
+
+-- name: UpsertPasswordReset :one
+INSERT INTO password_resets(email, otp, expires_at, attempts)
+  VALUES ($1, $2, $3, 0)
+ON CONFLICT (email)
+  DO UPDATE SET
+    otp = EXCLUDED.otp,
+    expires_at = EXCLUDED.expires_at,
+    attempts = 0
+  RETURNING
+    id,
+    email,
+    otp,
+    expires_at,
+    attempts;
+
+-- name: GetPasswordResetByEmail :one
+SELECT
+  id,
+  email,
+  otp,
+  attempts,
+  expires_at
+FROM
+  password_resets
+WHERE
+  email = $1;
+
+-- name: IncrementPasswordResetAttempts :exec
+UPDATE password_resets
+SET attempts = attempts + 1
+WHERE email = $1;
+
+-- name: DeletePasswordResetByEmail :exec
+DELETE FROM password_resets
+WHERE email = $1;
+
+-- name: UpdateUserPasswordByEmail :exec
+UPDATE users
+SET password = $2, updated_at = NOW()
+WHERE email = $1;

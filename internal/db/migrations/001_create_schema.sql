@@ -50,7 +50,6 @@ CREATE TABLE users(
     ROLE user_role NOT NULL DEFAULT 'USER',
     refresh_token text,
     trust_score integer DEFAULT 100,
-    is_verified boolean NOT NULL DEFAULT FALSE,
     created_at timestamptz DEFAULT NOW(),
     updated_at timestamptz DEFAULT NOW()
 );
@@ -65,7 +64,18 @@ CREATE TABLE user_onboarding(
     password TEXT NOT NULL,
     otp text NOT NULL,
     attempts integer DEFAULT 0,
-    verified_at timestamptz,
+    created_at timestamptz DEFAULT NOW(),
+    expires_at timestamptz NOT NULL
+);
+
+-- +goose StatementEnd
+-- 2.1 PasswordResets
+-- +goose StatementBegin
+CREATE TABLE password_resets(
+    id serial PRIMARY KEY,
+    email text UNIQUE NOT NULL REFERENCES users(email) ON DELETE CASCADE,
+    otp text NOT NULL,
+    attempts integer DEFAULT 0,
     created_at timestamptz DEFAULT NOW(),
     expires_at timestamptz NOT NULL
 );
@@ -170,6 +180,8 @@ DROP TABLE IF EXISTS claims;
 DROP TABLE IF EXISTS items;
 
 DROP TABLE IF EXISTS hubs;
+
+DROP TABLE IF EXISTS password_resets;
 
 DROP TABLE IF EXISTS user_onboarding;
 

@@ -1,6 +1,6 @@
 -- name: SeedUser :one
-INSERT INTO users (name, email, password, role, is_verified, trust_score)
-VALUES ($1, $2, $3, $4, true, $5)
+INSERT INTO users (name, email, password, role, trust_score)
+VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
 RETURNING id;
 

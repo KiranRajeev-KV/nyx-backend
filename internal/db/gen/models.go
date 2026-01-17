@@ -286,6 +286,15 @@ type Item struct {
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 }
 
+type PasswordReset struct {
+	ID        int32              `json:"id"`
+	Email     string             `json:"email"`
+	Otp       string             `json:"otp"`
+	Attempts  pgtype.Int4        `json:"attempts"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt time.Time          `json:"expires_at"`
+}
+
 type User struct {
 	ID           uuid.UUID          `json:"id"`
 	Name         string             `json:"name"`
@@ -295,19 +304,17 @@ type User struct {
 	Role         UserRole           `json:"role"`
 	RefreshToken pgtype.Text        `json:"refresh_token"`
 	TrustScore   pgtype.Int4        `json:"trust_score"`
-	IsVerified   bool               `json:"is_verified"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
 type UserOnboarding struct {
-	ID         int32              `json:"id"`
-	Name       string             `json:"name"`
-	Email      string             `json:"email"`
-	Password   string             `json:"password"`
-	Otp        string             `json:"otp"`
-	Attempts   pgtype.Int4        `json:"attempts"`
-	VerifiedAt pgtype.Timestamptz `json:"verified_at"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
-	ExpiresAt  time.Time          `json:"expires_at"`
+	ID        int32              `json:"id"`
+	Name      string             `json:"name"`
+	Email     string             `json:"email"`
+	Password  string             `json:"password"`
+	Otp       string             `json:"otp"`
+	Attempts  pgtype.Int4        `json:"attempts"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt time.Time          `json:"expires_at"`
 }
