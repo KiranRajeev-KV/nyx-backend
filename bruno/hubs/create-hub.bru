@@ -1,0 +1,93 @@
+meta {
+  name: create-hub
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{BASE_URL}}/hubs/
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "Central Library Hub",
+    "address": "123 Main Street, Downtown",
+    "contact": "+1-555-0123",
+    "longitude": "-73.987654",
+    "latitude": "40.765432"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  # Create hub (Admin only)
+  This endpoint creates a new hub in the system. Requires admin authentication.
+  
+  ## Required Fields
+  - name (string, 3-100 chars): Hub name
+  - address (string, 5-200 chars): Hub address
+  - contact (string, 5-50 chars): Contact information
+  
+  ## Optional Fields
+  - longitude (string, 1-50 chars): Longitude coordinate
+  - latitude (string, 1-50 chars): Latitude coordinate
+  
+  ## Request Body
+  ```json
+  {
+    "name": "Central Library Hub",
+    "address": "123 Main Street, Downtown",
+    "contact": "+1-555-0123",
+    "longitude": "-73.987654",
+    "latitude": "40.765432"
+  }
+  ```
+  
+  ## Response Success (201)
+  ```json
+  {
+    "message": "Hub created successfully",
+    "data": {
+      "id": "019bbc79-208b-7105-95ae-d29aa8f6ecd8",
+      "name": "Central Library Hub",
+      "address": "123 Main Street, Downtown",
+      "longitude": "-73.987654",
+      "latitude": "40.765432",
+      "contact": "+1-555-0123",
+      "created_at": "2026-01-15T10:30:00Z",
+      "updated_at": "2026-01-15T10:30:00Z"
+    }
+  }
+  ```
+  
+  ## Response Validation Error (400)
+  ```json
+  {
+    "message": "Invalid request format for creating a hub",
+    "error": {
+      "field": "name",
+      "message": "Name is required and must be between 3 and 100 characters"
+    }
+  }
+  ```
+  
+  ## Response Unauthorized (401)
+  ```json
+  {
+    "message": "Authentication required"
+  }
+  ```
+  
+  ## Response Forbidden (403)
+  ```json
+  {
+    "message": "Admin access required"
+  }
+  ```
+}

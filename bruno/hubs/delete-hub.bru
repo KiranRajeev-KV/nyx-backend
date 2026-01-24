@@ -1,0 +1,75 @@
+meta {
+  name: delete-hub
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{BASE_URL}}/hubs/:id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  id: 019bbc79-208b-7105-95ae-d29aa8f6ecd8
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  # Delete hub (Admin only)
+  This endpoint deletes a hub from the system. Requires admin authentication.
+  
+  ## Parameters
+  - id (path): UUID of the hub to delete
+  
+  ## Important Notes
+  - Hub can only be deleted if it has no associated items
+  - If hub has linked items, deletion will be blocked with 409 conflict
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "Hub deleted successfully"
+  }
+  ```
+  
+  ## Response Not Found (404)
+  ```json
+  {
+    "message": "Hub not found"
+  }
+  ```
+  
+  ## Response Conflict (409)
+  Hub has associated items and cannot be deleted:
+  ```json
+  {
+    "message": "Cannot delete hub: it has associated items"
+  }
+  ```
+  
+  ## Response Unauthorized (401)
+  ```json
+  {
+    "message": "Authentication required"
+  }
+  ```
+  
+  ## Response Forbidden (403)
+  ```json
+  {
+    "message": "Admin access required"
+  }
+  ```
+  
+  ## Response Server Error (500)
+  ```json
+  {
+    "message": "Oops! Something happened. Please try again later."
+  }
+  ```
+}

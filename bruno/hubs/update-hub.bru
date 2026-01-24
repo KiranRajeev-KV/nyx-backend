@@ -1,0 +1,107 @@
+meta {
+  name: update-hub
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{BASE_URL}}/hubs/:id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  id: 019bf015-8cba-7f1d-b559-9383c026df8f
+}
+
+body:json {
+  {
+    "name": "Updated Central Library Hub",
+    "address": "456 Updated Street, New District",
+    "contact": "+1-555-9999",
+    "longitude": "-74.123456",
+    "latitude": "40.876543"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  # Update hub (Admin only)
+  This endpoint updates an existing hub. Requires admin authentication.
+  
+  ## Parameters
+  - id (path): UUID of the hub to update
+  
+  ## Request Body
+  All fields are optional. Only provided fields will be updated.
+  
+  ```json
+  {
+    "name": "Updated Central Library Hub",
+    "address": "456 Updated Street, New District",
+    "contact": "+1-555-9999",
+    "longitude": "-74.123456",
+    "latitude": "40.876543"
+  }
+  ```
+  
+  ## Partial Update Example
+  ```json
+  {
+    "name": "Just Update Name"
+  }
+  ```
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "Hub updated successfully",
+    "data": {
+      "id": "019bbc79-208b-7105-95ae-d29aa8f6ecd8",
+      "name": "Updated Central Library Hub",
+      "address": "456 Updated Street, New District",
+      "longitude": "-74.123456",
+      "latitude": "40.876543",
+      "contact": "+1-555-9999",
+      "created_at": "2026-01-15T10:30:00Z",
+      "updated_at": "2026-01-15T11:00:00Z"
+    }
+  }
+  ```
+  
+  ## Response Not Found (404)
+  ```json
+  {
+    "message": "Hub not found"
+  }
+  ```
+  
+  ## Response Validation Error (400)
+  ```json
+  {
+    "message": "Invalid request format for updating a hub",
+    "error": {
+      "field": "address",
+      "message": "Address must be between 5 and 200 characters"
+    }
+  }
+  ```
+  
+  ## Response Unauthorized (401)
+  ```json
+  {
+    "message": "Authentication required"
+  }
+  ```
+  
+  ## Response Forbidden (403)
+  ```json
+  {
+    "message": "Admin access required"
+  }
+  ```
+}

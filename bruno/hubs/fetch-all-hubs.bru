@@ -1,0 +1,40 @@
+meta {
+  name: fetch-all-hubs
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{BASE_URL}}/hubs/
+  body: none
+  auth: none
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  # Fetch all hubs (Public endpoint)
+  This endpoint retrieves all hubs in the system, ordered by creation date (newest first).
+  
+  ## Response
+  ```json
+  {
+    "message": "Hubs fetched successfully",
+    "data": [
+      {
+        "id": "019bbc79-208b-7105-95ae-d29aa8f6ecd8",
+        "name": "Central Library Hub",
+        "address": "123 Main Street, Downtown",
+        "longitude": "-73.987654",
+        "latitude": "40.765432",
+        "contact": "+1-555-0123",
+        "created_at": "2026-01-15T10:30:00Z",
+        "updated_at": "2026-01-15T10:30:00Z"
+      }
+    ]
+  }
+  ```
+}

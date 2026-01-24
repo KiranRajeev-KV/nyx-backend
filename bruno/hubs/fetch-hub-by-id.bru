@@ -1,0 +1,52 @@
+meta {
+  name: fetch-hub-by-id
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{BASE_URL}}/hubs/:id
+  body: none
+  auth: none
+}
+
+params:path {
+  id: 019bbc79-208b-7105-95ae-d29aa8f6ecd8
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  # Fetch hub by ID (Public endpoint)
+  This endpoint retrieves a specific hub by its ID.
+  
+  ## Parameters
+  - id (path): UUID of the hub to fetch
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "Hub fetched successfully",
+    "data": {
+      "id": "019bbc79-208b-7105-95ae-d29aa8f6ecd8",
+      "name": "Central Library Hub",
+      "address": "123 Main Street, Downtown",
+      "longitude": "-73.987654",
+      "latitude": "40.765432",
+      "contact": "+1-555-0123",
+      "created_at": "2026-01-15T10:30:00Z",
+      "updated_at": "2026-01-15T10:30:00Z"
+    }
+  }
+  ```
+  
+  ## Response Not Found (404)
+  ```json
+  {
+    "message": "Hub not found"
+  }
+  ```
+}
