@@ -153,7 +153,7 @@ func (s *Seeder) seedUsers(ctx context.Context) ([]uuid.UUID, error) {
 		Email string
 		Role  db.UserRole
 	}{
-		{"Admin User", "admin@nyx.com", db.UserRoleADMIN},
+		{"Admin User", "admin@example.com", db.UserRoleADMIN},
 		{"John Doe", "john@example.com", db.UserRoleUSER},
 		{"Jane Smith", "jane@example.com", db.UserRoleUSER},
 		{"Alice Johnson", "alice@example.com", db.UserRoleUSER},
