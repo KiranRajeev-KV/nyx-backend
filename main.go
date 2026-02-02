@@ -18,6 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	apiAuth "github.com/KiranRajeev-KV/nyx-backend/api/auth"
+	apiClaims "github.com/KiranRajeev-KV/nyx-backend/api/claims"
 	apiHubs "github.com/KiranRajeev-KV/nyx-backend/api/hubs"
 	apiItems "github.com/KiranRajeev-KV/nyx-backend/api/items"
 )
@@ -102,6 +103,7 @@ func StartServer() {
 	apiAuth.AuthRoutes(v1)
 	apiItems.ItemRoutes(v1)
 	apiHubs.HubRoutes(v1)
+	apiClaims.ClaimRoutes(v1)
 
 	// === Server Setup ===
 
