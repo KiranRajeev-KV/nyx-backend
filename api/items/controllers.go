@@ -488,7 +488,7 @@ func UpdateItemStatus(c *gin.Context) {
 	if !ok {
 		return
 	}
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -499,7 +499,7 @@ func UpdateItemStatus(c *gin.Context) {
 	defer conn.Release()
 
 	q := db.New()
-	
+
 	updatedItem, err := q.UpdateItemStatusById(ctx, conn, db.UpdateItemStatusByIdParams{
 		ID:     itemUUID,
 		Status: db.ItemStatus(req.Status),
