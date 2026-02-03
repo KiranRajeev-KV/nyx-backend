@@ -1,0 +1,16 @@
+meta {
+  name: get-all-claims-by-me
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{BASE_URL}}/claims/me
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
