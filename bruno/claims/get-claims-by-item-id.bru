@@ -5,11 +5,16 @@ meta {
 }
 
 get {
-  url: 
+  url: {{BASE_URL}}/claims/item/:id
   body: none
   auth: inherit
 }
 
+params:path {
+  id: 019c239a-8423-70e2-a7fd-e60a7da60a77
+}
+
 settings {
   encodeUrl: true
+  timeout: 0
 }

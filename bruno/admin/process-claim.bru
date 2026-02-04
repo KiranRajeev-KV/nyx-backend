@@ -4,12 +4,24 @@ meta {
   seq: 2
 }
 
-get {
-  url: 
-  body: none
+patch {
+  url: {{BASE_URL}}/claims/:id
+  body: json
   auth: inherit
+}
+
+params:path {
+  id: 019c239d-0675-7d88-96f3-b7b538243eeb
+}
+
+body:json {
+  {
+    "status":"APPROVED",
+    "admin_notes": "no notes"
+  }
 }
 
 settings {
   encodeUrl: true
+  timeout: 0
 }
