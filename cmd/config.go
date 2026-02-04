@@ -46,7 +46,7 @@ func validateConfig(env *EnvConfig) error {
 	return v.ValidateStruct(env,
 		v.Field(&env.Environment,
 			v.Required,
-			v.In("DEV", "PROD"),
+			v.In("DEV", "PROD", "TEST"),
 		),
 		v.Field(&env.Port,
 			v.Required,

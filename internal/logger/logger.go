@@ -85,7 +85,7 @@ func InitLogger(env string) (*LoggerService, error) {
 				return fmt.Sprintf("level=%q", i)
 			},
 			FormatMessage: func(i any) string {
-				return fmt.Sprintf("msg=%q", i) // Quoting the message automatically
+				return fmt.Sprintf("msg=%q", i) // Quoting message automatically
 			},
 			NoColor: true,
 		}
@@ -120,10 +120,13 @@ func InitLogger(env string) (*LoggerService, error) {
 				return fmt.Sprintf("level=%s", i)
 			},
 			FormatMessage: func(i any) string {
-				return fmt.Sprintf("msg=%q", i) // Quoting the message automatically
+				return fmt.Sprintf("msg=%q", i) // Quoting message automatically
 			},
 			NoColor: true,
 		}
+	case "TEST":
+		// Silent logging for tests - use /dev/null
+		output = zerolog.Nop()
 	default:
 		return nil, errors.New("invalid environment for logger setup")
 	}
