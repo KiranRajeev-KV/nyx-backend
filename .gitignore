@@ -4,3 +4,9 @@ tmp
 dev.log
 *.rsa
 .vscode
+coverage.*
+
+# Test keys
+tests/app.test.rsa
+tests/app.test.pub.rsa
+.env.test
