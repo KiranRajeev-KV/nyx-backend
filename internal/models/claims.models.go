@@ -1,0 +1,34 @@
+package models
+
+import (
+	v "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/go-ozzo/ozzo-validation/v4/is"
+)
+
+type CreateClaimRequest struct {
+	ItemID        string  `json:"item_id"`
+	ProofText     string  `json:"proof_text"`
+	ProofImageUrl *string `json:"proof_image_url"`
+}
+
+func (r CreateClaimRequest) Validate() (errorMsg string, err error) {
+	err = v.ValidateStruct(&r,
+		v.Field(&r.ItemID, v.Required.Error("Item ID is required"), is.UUID.Error("Item ID must be a valid UUID")),
+		v.Field(&r.ProofText, v.Required.Error("Proof text is required"), v.Length(10, 1000).Error("Proof text must be between 10 and 1000 characters")),
+		v.Field(&r.ProofImageUrl, v.Length(0, 500).Error("Proof image URL must be less than 500 characters")),
+	)
+	return "Invalid request format for creating a claim", err
+}
+
+type ProcessClaimRequest struct {
+	Status     string `json:"status"`
+	AdminNotes string `json:"admin_notes"`
+}
+
+func (r ProcessClaimRequest) Validate() (errorMsg string, err error) {
+	err = v.ValidateStruct(&r,
+		v.Field(&r.Status, v.Required.Error("Status is required"), v.In("APPROVED", "REJECTED").Error("Status must be either APPROVED or REJECTED")),
+		v.Field(&r.AdminNotes, v.Required.Error("Admin notes are required"), v.Length(5, 500).Error("Admin notes must be between 5 and 500 characters")),
+	)
+	return "Invalid request format for processing a claim", err
+}
