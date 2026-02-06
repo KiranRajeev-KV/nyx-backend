@@ -145,22 +145,27 @@ tasks:
       - watchexec -e sql,yaml -- go-task gen
 
   # ===== Testing =====
-  # test:
-  #   desc: "Run all tests"
-  #   cmds:
-  #     - go test -v ./...
+  test:
+    desc: "Run all tests"
+    cmds:
+      - go test -v ./...
 
-  # test:coverage:
-  #   desc: "Run tests with coverage report"
-  #   cmds:
-  #     - go test -v -coverprofile=coverage.out ./...
-  #     - go tool cover -html=coverage.out -o coverage.html
-  #     - 'echo "[OK] Coverage report: coverage.html"'
+  test:coverage:
+    desc: "Run tests with coverage report"
+    cmds:
+      - go test -v -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+      - 'echo "[OK] Coverage report: coverage.html"'
 
-  # test:unit:
-  #   desc: "Run unit tests only"
-  #   cmds:
-  #     - go test -v -short ./...
+  test:unit:
+    desc: "Run unit tests only"
+    cmds:
+      - go test -v ./pkg/...
+
+  test:integration:
+    desc: "Run integration tests only"
+    cmds:
+      - go test -v ./tests/integration/...
 
   # ===== Linting & Formatting =====
   fmt:

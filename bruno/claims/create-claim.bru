@@ -1,0 +1,24 @@
+meta {
+  name: create-claim
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{BASE_URL}}/claims/
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "item_id":"019c239a-8423-70e2-a7fd-e60a7da60a77",
+    "proof_text":"PROOF TEXT",
+    "proof_image_url": "www.google.com"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

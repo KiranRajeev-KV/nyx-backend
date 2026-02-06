@@ -24,9 +24,13 @@ var k = koanf.New(".")
 var Env *EnvConfig
 
 func LoadConfig() (*EnvConfig, error) {
+	return LoadConfigFrom(".env")
+}
+
+func LoadConfigFrom(path string) (*EnvConfig, error) {
 	env := &EnvConfig{}
 
-	if err := k.Load(file.Provider(".env"), dotenv.Parser()); err != nil {
+	if err := k.Load(file.Provider(path), dotenv.Parser()); err != nil {
 		return nil, err
 	}
 
@@ -46,7 +50,7 @@ func validateConfig(env *EnvConfig) error {
 	return v.ValidateStruct(env,
 		v.Field(&env.Environment,
 			v.Required,
-			v.In("DEV", "PROD"),
+			v.In("DEV", "PROD", "TEST"),
 		),
 		v.Field(&env.Port,
 			v.Required,
