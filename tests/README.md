@@ -167,6 +167,23 @@ func setupCreateClaimTest() *gin.Engine {
 - FetchAllClaims tests
 - ProcessClaim validation tests (Status, AdminNotes)
 
+### Hubs Controller (`api/hubs/controllers_test.go`)
+- CreateHub validation tests (Name, Address, Contact, Longitude, Latitude)
+- FetchHubs tests (list all hubs, paginated)
+- FetchHubById tests (valid/invalid ID validation)
+- UpdateHub validation tests (all fields with length constraints)
+- DeleteHub tests (soft delete)
+
+### Items Controller (`api/items/controllers_test.go`)
+- FetchItems query parameter validation (type=LOST/FOUND)
+- CreateItem validation tests (Name, Description, Type, Location, HubId)
+  - Type-specific validation (LOST items cannot be anonymous, FOUND requires HubId)
+- FetchItemById ID validation tests
+- FetchAllItemsByUserId auth tests
+- UpdateItemById ID and field validation tests
+- DeleteItemById authorization tests
+- UpdateItemStatus status validation tests (OPEN, PENDING_CLAIM, ARCHIVED, RESOLVED)
+
 ## Test Statistics
 
 Run all tests:
@@ -174,7 +191,7 @@ Run all tests:
 go test ./...
 ```
 
-Current test count: **200+ unit tests** covering:
+Current test count: **258+ unit tests** covering:
 - Request validation
 - Field length constraints
 - Required field validation
