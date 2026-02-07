@@ -1,17 +1,16 @@
 package pkg_test
 
 import (
-	"bytes"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
-	"github.com/gin-gonic/gin"
+	"github.com/KiranRajeev-KV/nyx-backend/tests"
 	"github.com/stretchr/testify/assert"
 )
 
-// Note: TestMain is defined in token_test.go for the pkg_test package
+func init() {
+	tests.InitTestLogger()
+}
 
 // TestRequest is a simple validatable request for testing
 type TestRequest struct {
@@ -38,90 +37,79 @@ func (r TestRequestAlwaysValid) Validate() (errorMsg string, err error) {
 	return "", nil
 }
 
-func createTestContextWithBody(body string) (*gin.Context, *httptest.ResponseRecorder) {
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString(body))
-	c.Request.Header.Set("Content-Type", "application/json")
-	return c, w
-}
-
 // ==================== ValidateRequest Tests ====================
 
 func TestValidateRequest_ValidJSON_ReturnsRequest(t *testing.T) {
-	c, w := createTestContextWithBody(`{"name": "John", "email": "john@example.com"}`)
+	tc := tests.NewTestContextWithBody("POST", "/", `{"name": "John", "email": "john@example.com"}`, "application/json")
 
-	req, ok := pkg.ValidateRequest[TestRequest](c)
+	req, ok := pkg.ValidateRequest[TestRequest](tc.Context)
 
 	assert.True(t, ok)
 	assert.NotNil(t, req)
 	assert.Equal(t, "John", req.Name)
 	assert.Equal(t, "john@example.com", req.Email)
-	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, 200, tc.GetResponseStatus())
 }
 
 func TestValidateRequest_InvalidJSON_ReturnsFalse(t *testing.T) {
-	c, w := createTestContextWithBody(`{invalid json}`)
+	tc := tests.NewTestContextWithBody("POST", "/", `{invalid json}`, "application/json")
 
-	req, ok := pkg.ValidateRequest[TestRequest](c)
+	req, ok := pkg.ValidateRequest[TestRequest](tc.Context)
 
 	assert.False(t, ok)
 	assert.Nil(t, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, 400, tc.GetResponseStatus())
 }
 
 func TestValidateRequest_EmptyBody_ReturnsFalse(t *testing.T) {
-	c, w := createTestContextWithBody(``)
+	tc := tests.NewTestContextWithBody("POST", "/", ``, "application/json")
 
-	req, ok := pkg.ValidateRequest[TestRequest](c)
+	req, ok := pkg.ValidateRequest[TestRequest](tc.Context)
 
 	assert.False(t, ok)
 	assert.Nil(t, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, 400, tc.GetResponseStatus())
 }
 
 func TestValidateRequest_ValidationFails_ReturnsFalse(t *testing.T) {
 	// Missing required "name" field
-	c, w := createTestContextWithBody(`{"email": "john@example.com"}`)
+	tc := tests.NewTestContextWithBody("POST", "/", `{"email": "john@example.com"}`, "application/json")
 
-	req, ok := pkg.ValidateRequest[TestRequest](c)
+	req, ok := pkg.ValidateRequest[TestRequest](tc.Context)
 
 	assert.False(t, ok)
 	assert.Nil(t, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, 400, tc.GetResponseStatus())
 }
 
 func TestValidateRequest_ValidationPasses_ReturnsTrue(t *testing.T) {
-	c, w := createTestContextWithBody(`{"data": "anything"}`)
+	tc := tests.NewTestContextWithBody("POST", "/", `{"data": "anything"}`, "application/json")
 
-	req, ok := pkg.ValidateRequest[TestRequestAlwaysValid](c)
+	req, ok := pkg.ValidateRequest[TestRequestAlwaysValid](tc.Context)
 
 	assert.True(t, ok)
 	assert.NotNil(t, req)
 	assert.Equal(t, "anything", req.Data)
-	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, 200, tc.GetResponseStatus())
 }
 
 func TestValidateRequest_ExtraFields_IgnoredAndPasses(t *testing.T) {
-	c, w := createTestContextWithBody(`{"name": "John", "email": "john@example.com", "extra": "ignored"}`)
+	tc := tests.NewTestContextWithBody("POST", "/", `{"name": "John", "email": "john@example.com", "extra": "ignored"}`, "application/json")
 
-	req, ok := pkg.ValidateRequest[TestRequest](c)
+	req, ok := pkg.ValidateRequest[TestRequest](tc.Context)
 
 	assert.True(t, ok)
 	assert.NotNil(t, req)
 	assert.Equal(t, "John", req.Name)
-	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, 200, tc.GetResponseStatus())
 }
 
 func TestValidateRequest_WrongContentType_ReturnsFalse(t *testing.T) {
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString(`{"name": "John"}`))
-	c.Request.Header.Set("Content-Type", "text/plain")
+	tc := tests.NewTestContextWithBody("POST", "/", `{"name": "John"}`, "text/plain")
 
-	req, ok := pkg.ValidateRequest[TestRequest](c)
+	req, ok := pkg.ValidateRequest[TestRequest](tc.Context)
 
 	assert.False(t, ok)
 	assert.Nil(t, req)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, 400, tc.GetResponseStatus())
 }

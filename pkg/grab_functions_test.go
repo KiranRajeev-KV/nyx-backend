@@ -2,25 +2,22 @@ package pkg_test
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
+	"github.com/KiranRajeev-KV/nyx-backend/tests"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/segmentio/ksuid"
 	"github.com/stretchr/testify/assert"
 )
 
-func newTestContext(method, path string) (*gin.Context, *httptest.ResponseRecorder) {
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest(method, path, nil)
-	return c, w
+func init() {
+	tests.InitTestLogger()
 }
 
 func TestTagRequestWithId_SetsRequestID(t *testing.T) {
-	router := gin.New()
+	router := tests.NewTestRouter()
 	router.Use(pkg.TagRequestWithId)
 
 	var requestID string
@@ -31,66 +28,61 @@ func TestTagRequestWithId_SetsRequestID(t *testing.T) {
 		c.Status(http.StatusOK)
 	})
 
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	router.ServeHTTP(w, req)
+	tc := tests.ExecuteRequest(router, http.MethodGet, "/test")
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, http.StatusOK, tc.GetResponseStatus())
 	assert.NotEmpty(t, requestID)
 	_, err := ksuid.Parse(requestID)
 	assert.NoError(t, err)
 }
 
 func TestGetEmail_MissingEmail_ReturnsFalse(t *testing.T) {
-	c, w := newTestContext(http.MethodGet, "/test")
-
-	email, ok := pkg.GetEmail(c, "TEST")
+	tc := tests.NewTestContext(http.MethodGet, "/test")
+	email, ok := pkg.GetEmail(tc.Context, "TEST")
 	assert.False(t, ok)
 	assert.Empty(t, email)
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, http.StatusInternalServerError, tc.GetResponseStatus())
 }
 
 func TestGetEmail_HasEmail_ReturnsValue(t *testing.T) {
-	c, _ := newTestContext(http.MethodGet, "/test")
-	c.Set("email", "test@example.com")
+	tc := tests.NewTestContext(http.MethodGet, "/test")
+	tc.SetContextValue("email", "test@example.com")
 
-	email, ok := pkg.GetEmail(c, "TEST")
+	email, ok := pkg.GetEmail(tc.Context, "TEST")
 	assert.True(t, ok)
 	assert.Equal(t, "test@example.com", email)
 }
 
 func TestGrabUserId_MissingUserId_ReturnsFalse(t *testing.T) {
-	c, w := newTestContext(http.MethodGet, "/test")
-
-	userID, ok := pkg.GrabUserId(c, "TEST")
+	tc := tests.NewTestContext(http.MethodGet, "/test")
+	userID, ok := pkg.GrabUserId(tc.Context, "TEST")
 	assert.False(t, ok)
 	assert.Empty(t, userID)
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, http.StatusInternalServerError, tc.GetResponseStatus())
 }
 
 func TestGrabUserId_HasUserId_ReturnsValue(t *testing.T) {
-	c, _ := newTestContext(http.MethodGet, "/test")
-	c.Set("userId", "user-123")
+	tc := tests.NewTestContext(http.MethodGet, "/test")
+	tc.SetContextValue("userId", "user-123")
 
-	userID, ok := pkg.GrabUserId(c, "TEST")
+	userID, ok := pkg.GrabUserId(tc.Context, "TEST")
 	assert.True(t, ok)
 	assert.Equal(t, "user-123", userID)
 }
 
 func TestGrabUuid_InvalidUUID_ReturnsFalse(t *testing.T) {
-	c, w := newTestContext(http.MethodGet, "/test")
-
-	parsed, ok := pkg.GrabUuid(c, "not-a-uuid", "TEST", "item")
+	tc := tests.NewTestContext(http.MethodGet, "/test")
+	parsed, ok := pkg.GrabUuid(tc.Context, "not-a-uuid", "TEST", "item")
 	assert.False(t, ok)
 	assert.Equal(t, uuid.Nil, parsed)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, http.StatusBadRequest, tc.GetResponseStatus())
 }
 
 func TestGrabUuid_ValidUUID_ReturnsTrue(t *testing.T) {
-	c, _ := newTestContext(http.MethodGet, "/test")
+	tc := tests.NewTestContext(http.MethodGet, "/test")
 
 	id := uuid.New()
-	parsed, ok := pkg.GrabUuid(c, id.String(), "TEST", "item")
+	parsed, ok := pkg.GrabUuid(tc.Context, id.String(), "TEST", "item")
 	assert.True(t, ok)
 	assert.Equal(t, id, parsed)
 }
