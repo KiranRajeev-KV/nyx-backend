@@ -1,26 +1,21 @@
 package pkg_test
 
 import (
-	"net/http/httptest"
 	"os"
 	"testing"
 
 	db "github.com/KiranRajeev-KV/nyx-backend/internal/db/gen"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
 	"github.com/KiranRajeev-KV/nyx-backend/tests"
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMain(m *testing.M) {
-	tests.MustSetup()
-	os.Exit(m.Run())
-}
-
-func createTestContext() (*gin.Context, *httptest.ResponseRecorder) {
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	return c, w
+func init() {
+	tests.InitTestLogger()
+	
+	// Change to project root to load RSA keys
+	os.Chdir("/home/kr/dev/nyx-backend")
+	pkg.InitPaseto()
 }
 
 func TestParseToken_InvalidTokenType_ReturnsFalse(t *testing.T) {
@@ -76,7 +71,8 @@ func TestParseToken_WrongTokenType_ReturnsFalse(t *testing.T) {
 }
 
 func TestVerifyTokens_EmptyTokens_ReturnsFalse(t *testing.T) {
-	c, _ := createTestContext()
+	tc := tests.NewTestContext("POST", "/")
+	c := tc.Context
 
 	result := pkg.VerifyTokens(c, "", "")
 
@@ -84,7 +80,8 @@ func TestVerifyTokens_EmptyTokens_ReturnsFalse(t *testing.T) {
 }
 
 func TestVerifyTokens_EmptyAuthToken_ReturnsFalse(t *testing.T) {
-	c, _ := createTestContext()
+	tc := tests.NewTestContext("POST", "/")
+	c := tc.Context
 	refreshToken, _ := pkg.CreateRefreshToken("user-123", "test@example.com", db.UserRoleUSER)
 
 	result := pkg.VerifyTokens(c, "", refreshToken)
@@ -93,7 +90,8 @@ func TestVerifyTokens_EmptyAuthToken_ReturnsFalse(t *testing.T) {
 }
 
 func TestVerifyTokens_EmptyRefreshToken_ReturnsFalse(t *testing.T) {
-	c, _ := createTestContext()
+	tc := tests.NewTestContext("POST", "/")
+	c := tc.Context
 	authToken, _ := pkg.CreateAuthToken("user-123", "test@example.com", db.UserRoleUSER)
 
 	result := pkg.VerifyTokens(c, authToken, "")
@@ -102,7 +100,8 @@ func TestVerifyTokens_EmptyRefreshToken_ReturnsFalse(t *testing.T) {
 }
 
 func TestVerifyTokens_ValidTokens_ReturnsTrue(t *testing.T) {
-	c, _ := createTestContext()
+	tc := tests.NewTestContext("POST", "/")
+	c := tc.Context
 	userId := "user-123"
 	email := "test@example.com"
 	role := db.UserRoleUSER
@@ -118,7 +117,8 @@ func TestVerifyTokens_ValidTokens_ReturnsTrue(t *testing.T) {
 }
 
 func TestVerifyTokens_SetsContextValues(t *testing.T) {
-	c, _ := createTestContext()
+	tc := tests.NewTestContext("POST", "/")
+	c := tc.Context
 	userId := "user-123"
 	email := "test@example.com"
 	role := db.UserRoleUSER
@@ -142,7 +142,8 @@ func TestVerifyTokens_SetsContextValues(t *testing.T) {
 }
 
 func TestVerifyTokens_MismatchedUserId_ReturnsFalse(t *testing.T) {
-	c, _ := createTestContext()
+	tc := tests.NewTestContext("POST", "/")
+	c := tc.Context
 	email := "test@example.com"
 	role := db.UserRoleUSER
 
@@ -155,7 +156,8 @@ func TestVerifyTokens_MismatchedUserId_ReturnsFalse(t *testing.T) {
 }
 
 func TestVerifyTokens_MismatchedEmail_ReturnsFalse(t *testing.T) {
-	c, _ := createTestContext()
+	tc := tests.NewTestContext("POST", "/")
+	c := tc.Context
 	userId := "user-123"
 	role := db.UserRoleUSER
 
@@ -168,7 +170,8 @@ func TestVerifyTokens_MismatchedEmail_ReturnsFalse(t *testing.T) {
 }
 
 func TestVerifyTokens_MismatchedRole_ReturnsFalse(t *testing.T) {
-	c, _ := createTestContext()
+	tc := tests.NewTestContext("POST", "/")
+	c := tc.Context
 	userId := "user-123"
 	email := "test@example.com"
 
@@ -181,7 +184,8 @@ func TestVerifyTokens_MismatchedRole_ReturnsFalse(t *testing.T) {
 }
 
 func TestVerifyTempToken_EmptyToken_ReturnsFalse(t *testing.T) {
-	c, _ := createTestContext()
+	tc := tests.NewTestContext("POST", "/")
+	c := tc.Context
 
 	result := pkg.VerifyTempToken(c, "")
 
@@ -189,7 +193,8 @@ func TestVerifyTempToken_EmptyToken_ReturnsFalse(t *testing.T) {
 }
 
 func TestVerifyTempToken_InvalidToken_ReturnsFalse(t *testing.T) {
-	c, _ := createTestContext()
+	tc := tests.NewTestContext("POST", "/")
+	c := tc.Context
 
 	result := pkg.VerifyTempToken(c, "invalid.token.here")
 
@@ -197,7 +202,8 @@ func TestVerifyTempToken_InvalidToken_ReturnsFalse(t *testing.T) {
 }
 
 func TestVerifyTempToken_ValidToken_ReturnsTrue(t *testing.T) {
-	c, _ := createTestContext()
+	tc := tests.NewTestContext("POST", "/")
+	c := tc.Context
 	email := "test@example.com"
 
 	tempToken := pkg.CreateTempToken(email)
@@ -208,7 +214,8 @@ func TestVerifyTempToken_ValidToken_ReturnsTrue(t *testing.T) {
 }
 
 func TestVerifyTempToken_SetsEmailInContext(t *testing.T) {
-	c, _ := createTestContext()
+	tc := tests.NewTestContext("POST", "/")
+	c := tc.Context
 	email := "test@example.com"
 
 	tempToken := pkg.CreateTempToken(email)
