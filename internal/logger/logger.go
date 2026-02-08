@@ -41,10 +41,6 @@ type ILoggerService interface {
 	Warn(msg string)
 	Error(msg string, err error)
 	Fatal(msg string, err error)
-
-	// Logging middleware to be used only as a global middleware during router
-	// initialization
-	LogMiddleware(c *gin.Context)
 }
 
 func InitLogger(env string) (*LoggerService, error) {
