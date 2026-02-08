@@ -130,9 +130,13 @@ func RegisterUser(c *gin.Context) {
 	tempToken := pkg.CreateTempToken(result.Email)
 	pkg.SetTempCookie(c, tempToken)
 
-	// TODO: send OTP via email (do this outside the transaction)
-	// otpSlice is commented out for now
-	// you can use otpSlice to send the actual code via your emailer
+	// send OTP via email (do this outside the transaction)
+	if EmailService != nil {
+		if err := EmailService.SendOTP(context.Background(), req.Email, otpStr); err != nil {
+			logger.Log.ErrorCtx(c, "[REGISTER-ERROR]: Failed to send OTP email", err)
+			// Continue flow - user can request OTP resend
+		}
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "Registration successful, please verify your email using the OTP.",
@@ -348,7 +352,16 @@ func ResendOTP(c *gin.Context) {
 		return
 	}
 
-	// TODO: send OTP via email (outside transaction)
+	// send OTP via email (outside transaction)
+	if EmailService != nil {
+		if err := EmailService.SendOTP(context.Background(), tempEmail, otpStr); err != nil {
+			logger.Log.ErrorCtx(c, "[RESEND-OTP-ERROR]: Failed to send OTP email", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": "Failed to resend OTP. Please try again.",
+			})
+			return
+		}
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "A new OTP has been sent to your email.",
@@ -585,7 +598,13 @@ func ForgotPassword(c *gin.Context) {
 	tempToken := pkg.CreateTempToken(result.Email)
 	pkg.SetTempCookie(c, tempToken)
 
-	// TODO: send OTP via email
+	// send OTP via email
+	if EmailService != nil {
+		if err := EmailService.SendPasswordReset(context.Background(), req.Email, otpStr); err != nil {
+			logger.Log.ErrorCtx(c, "[FORGOT-PASSWORD-ERROR]: Failed to send password reset email", err)
+			// Continue flow to prevent email enumeration
+		}
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "If your email is registered, you will receive an OTP.",

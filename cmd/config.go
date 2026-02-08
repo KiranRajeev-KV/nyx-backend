@@ -12,12 +12,18 @@ import (
 )
 
 type EnvConfig struct {
-	Environment  string `koanf:"ENVIRONMENT"`
-	Port         int    `koanf:"PORT"`
-	DatabaseURL  string `koanf:"GOOSE_DBSTRING"`
-	ClientDomain string `koanf:"CLIENT_DOMAIN"`
-	CookieDomain string `koanf:"COOKIE_DOMAIN"`
-	CookieSecure bool   `koanf:"COOKIE_SECURE"`
+	Environment       string `koanf:"ENVIRONMENT"`
+	Port              int    `koanf:"PORT"`
+	DatabaseURL       string `koanf:"GOOSE_DBSTRING"`
+	ClientDomain      string `koanf:"CLIENT_DOMAIN"`
+	CookieDomain      string `koanf:"COOKIE_DOMAIN"`
+	CookieSecure      bool   `koanf:"COOKIE_SECURE"`
+	EmailEnabled      bool   `koanf:"EMAIL_ENABLE"`
+	EmailSMTPHost     string `koanf:"EMAIL_SMTP_HOST"`
+	EmailSMTPPort     int    `koanf:"EMAIL_SMTP_PORT"`
+	EmailFromEmail    string `koanf:"EMAIL_FROM_EMAIL"`
+	EmailFromPassword string `koanf:"EMAIL_FROM_PASSWORD"`
+	EmailFromName     string `koanf:"EMAIL_FROM_NAME"`
 }
 
 var k = koanf.New(".")
@@ -73,6 +79,10 @@ func validateConfig(env *EnvConfig) error {
 				}
 				return nil
 			}),
+		),
+		v.Field(&env.EmailSMTPPort,
+			v.Min(1),
+			v.Max(65535),
 		),
 	)
 }

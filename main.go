@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/KiranRajeev-KV/nyx-backend/cmd"
+	"github.com/KiranRajeev-KV/nyx-backend/internal/email"
 	"github.com/KiranRajeev-KV/nyx-backend/internal/logger"
 	mw "github.com/KiranRajeev-KV/nyx-backend/internal/middleware"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
@@ -72,6 +73,14 @@ func StartServer() {
 	}
 	logger.Log.Info("[OK]: Paseto initialized successfully")
 
+	// Initialize Email Service
+	emailService := email.NewEmailService(cmd.Env, logger.Log)
+	if emailService.IsEnabled() {
+		logger.Log.Info("[OK]: Email service initialized successfully")
+	} else {
+		logger.Log.Info("[INFO]: Email service is disabled")
+	}
+
 	// === Router Setup ===
 
 	config := cors.Config{
@@ -100,6 +109,8 @@ func StartServer() {
 
 	v1 := router.Group("/api/v1")
 
+	// Initialize auth routes with email service
+	apiAuth.InitAuthRoutes(emailService)
 	apiAuth.AuthRoutes(v1)
 	apiItems.ItemRoutes(v1)
 	apiHubs.HubRoutes(v1)
