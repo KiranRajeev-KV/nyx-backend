@@ -1,9 +1,16 @@
 package api
 
 import (
+	"github.com/KiranRajeev-KV/nyx-backend/internal/email"
 	mw "github.com/KiranRajeev-KV/nyx-backend/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
+
+var EmailService email.IEmailService
+
+func InitAuthRoutes(emailService email.IEmailService) {
+	EmailService = emailService
+}
 
 func AuthRoutes(router *gin.RouterGroup) {
 	auth := router.Group("/auth")
