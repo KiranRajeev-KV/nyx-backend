@@ -14,3 +14,43 @@ settings {
   encodeUrl: true
   timeout: 0
 }
+
+docs {
+  # Refresh Access Token
+  This endpoint refreshes the access token using the refresh token stored in HTTP-only cookies. Extends the user's session without requiring login.
+  
+  ## Request Body
+  None (uses refresh token from cookies)
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "Token refreshed successfully",
+    "data": {
+      "access_token": "new_access_token_here",
+      "expires_in": 3600
+    }
+  }
+  ```
+  
+  ## Response Unauthorized (401)
+  ```json
+  {
+    "message": "Invalid or expired refresh token"
+  }
+  ```
+  
+  ## Response Missing Token (400)
+  ```json
+  {
+    "message": "Refresh token is required"
+  }
+  ```
+  
+  ## Notes
+  - Requires valid refresh token in HTTP-only cookies
+  - Updates access_token cookie with new token
+  - Refresh token remains the same
+  - Use this when access token is about to expire
+  - If refresh token is also expired, user must login again
+}

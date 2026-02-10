@@ -18,3 +18,51 @@ settings {
   encodeUrl: true
   timeout: 0
 }
+
+docs {
+  # Delete Item by ID (Owner only)
+  This endpoint performs a soft delete on an item, marking it as deleted without removing it from the database. Only the item owner can delete their own items.
+  
+  ## Path Parameters
+  - id (string, UUID): Unique identifier of the item to delete
+  
+  ## Request Body
+  None
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "Item deleted successfully"
+  }
+  ```
+  
+  ## Response Not Found (404)
+  ```json
+  {
+    "message": "Item not found or you are not authorized to delete it"
+  }
+  ```
+  
+  ## Response Invalid UUID (400)
+  ```json
+  {
+    "message": "Invalid itemId format"
+  }
+  ```
+  
+  ## Response Unauthorized (401)
+  ```json
+  {
+    "message": "Authentication required"
+  }
+  ```
+  
+  ## Notes
+  - Only the item owner can delete items
+  - Performs soft delete (marks as deleted, doesn't physically remove)
+  - Deleted items are no longer visible in public listings
+  - Item data is preserved for audit and legal purposes
+  - Can't delete items that have active claims (depends on business rules)
+  - Users can still view their own deleted items in their item list
+  - Once deleted, items cannot be restored through the API
+}

@@ -18,3 +18,61 @@ settings {
   encodeUrl: true
   timeout: 0
 }
+
+docs {
+  # Fetch Item by ID (Public endpoint)
+  This endpoint retrieves detailed information about a specific item by its UUID, including user and hub information.
+  
+  ## Path Parameters
+  - id (string, UUID): Unique identifier of the item
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "Item fetched successfully",
+    "data": {
+      "id": "019bbc84-9648-79f9-8984-22c437280952",
+      "is_anonymous": false,
+      "name": "Black Wallet Lost Near Park",
+      "image_url_redacted": "https://example.com/image.jpg",
+      "description": "I lost my black leather wallet near Greenway Park last evening. It has all my cards inside.",
+      "status": "OPEN",
+      "type": "LOST",
+      "location_description": "Near the fountain at Greenway Park",
+      "time_at": "2025-12-05T18:30:00Z",
+      "latitude": "12.345678",
+      "longitude": "98.765432",
+      "created_at": "2026-01-15T10:30:00Z",
+      "updated_at": "2026-01-15T10:30:00Z",
+      "user": {
+        "id": "019bbc79-208b-7105-95ae-d29aa8f6ecd8",
+        "name": "John Doe",
+        "email": "john@example.com"
+      },
+      "hub": null
+    }
+  }
+  ```
+  
+  ## Response Not Found (404)
+  ```json
+  {
+    "message": "Item not found"
+  }
+  ```
+  
+  ## Response Invalid UUID (400)
+  ```json
+  {
+    "message": "Invalid itemId format"
+  }
+  ```
+  
+  ## Notes
+  - Public endpoint - no authentication required
+  - Includes user information (unless item is anonymous)
+  - Includes hub information for FOUND items
+  - Returns full item details with all fields
+  - Redacted image URLs protect user privacy
+  - Works for both LOST and FOUND items
+}

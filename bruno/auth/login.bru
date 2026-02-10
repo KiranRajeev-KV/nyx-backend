@@ -21,3 +21,65 @@ settings {
   encodeUrl: true
   timeout: 0
 }
+
+docs {
+  # User Login
+  This endpoint authenticates a user with email and password, returning access and refresh tokens stored as HTTP-only cookies.
+  
+  ## Required Fields
+  - email (string, valid email): User's email address
+  - password (string, 8-50 chars): User's password
+  
+  ## Request Body
+  ```json
+  {
+    "email": "admin@example.com",
+    "password": "password123"
+  }
+  ```
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "Login successful",
+    "data": {
+      "id": "019bbc79-208b-7105-95ae-d29aa8f6ecd8",
+      "name": "Admin User",
+      "email": "admin@example.com",
+      "verified": true,
+      "role": "admin"
+    }
+  }
+  ```
+  
+  ## Response Validation Error (400)
+  ```json
+  {
+    "message": "Invalid request format for login",
+    "error": {
+      "field": "email",
+      "message": "Valid email is required"
+    }
+  }
+  ```
+  
+  ## Response Invalid Credentials (401)
+  ```json
+  {
+    "message": "Invalid email or password"
+  }
+  ```
+  
+  ## Response Email Not Verified (403)
+  ```json
+  {
+    "message": "Please verify your email before logging in"
+  }
+  ```
+  
+  ## Notes
+  - Sets HTTP-only cookies for access_token and refresh_token
+  - User must have verified email before logging in
+  - Access token has shorter expiration, refresh token has longer expiration
+  - Pre-configured admin user: admin@example.com / password123
+}

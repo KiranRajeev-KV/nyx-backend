@@ -24,3 +24,74 @@ settings {
   encodeUrl: true
   timeout: 0
 }
+
+docs {
+  # Update Item Status by ID
+  This endpoint updates the status of an item. Admins can update any item status, while owners may have limited permissions depending on business rules.
+  
+  ## Path Parameters
+  - id (string, UUID): Unique identifier of the item
+  
+  ## Required Fields
+  - status (string): New status value
+  
+  ## Valid Status Values
+  - "OPEN": Item is active and visible to public
+  - "PENDING_CLAIM": Item has a claim pending review
+  - "RESOLVED": Item has been returned to owner
+  - "ARCHIVED": Item is no longer active (hidden from public)
+  
+  ## Request Body
+  ```json
+  {
+    "status": "ARCHIVED"
+  }
+  ```
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "Item status updated successfully",
+    "data": {
+      "id": "019bbd0a-b3fd-7187-9a30-2b8376540304",
+      "status": "ARCHIVED",
+      "updated_at": "2026-01-15T14:20:00Z"
+    }
+  }
+  ```
+  
+  ## Response Not Found (404)
+  ```json
+  {
+    "message": "Item not found"
+  }
+  ```
+  
+  ## Response Validation Error (400)
+  ```json
+  {
+    "message": "Invalid request format for updating item status",
+    "error": {
+      "field": "status",
+      "message": "Status must be one of: OPEN, PENDING_CLAIM, RESOLVED, ARCHIVED"
+    }
+  }
+  ```
+  
+  ## Response Invalid UUID (400)
+  ```json
+  {
+    "message": "Invalid itemId format"
+  }
+  ```
+  
+  ## Notes
+  - Admin users can update any item's status
+  - Item owners may have restricted status changes
+  - Status changes trigger workflow processes (emails, notifications)
+  - Status changes are audited and logged
+  - OPEN items are visible in public listings
+  - ARCHIVED items are hidden from public view
+  - RESOLVED items indicate successful recovery
+  - PENDING_CLAIM indicates active claim process
+}

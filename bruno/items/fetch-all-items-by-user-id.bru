@@ -14,3 +14,64 @@ settings {
   encodeUrl: true
   timeout: 0
 }
+
+docs {
+  # Fetch All Items by Current User
+  This endpoint retrieves all items created by the currently authenticated user, including both LOST and FOUND items across all statuses.
+  
+  ## Request Body
+  None (uses authentication token to identify user)
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "Items fetched successfully",
+    "data": [
+      {
+        "id": "019bbcd3-d654-76bf-98dc-121f7487b2e1",
+        "is_anonymous": false,
+        "name": "Black Wallet Lost Near Park",
+        "image_url_redacted": "https://example.com/image.jpg",
+        "description": "I lost my black leather wallet near Greenway Park last evening.",
+        "status": "OPEN",
+        "type": "LOST",
+        "location_description": "Near the fountain at Greenway Park",
+        "time_at": "2025-12-05T18:30:00Z",
+        "latitude": "12.345678",
+        "longitude": "98.765432",
+        "created_at": "2026-01-15T10:30:00Z",
+        "updated_at": "2026-01-15T10:30:00Z",
+        "user": {
+          "id": "019bbc79-208b-7105-95ae-d29aa8f6ecd8",
+          "name": "John Doe",
+          "email": "john@example.com"
+        },
+        "hub": null
+      }
+    ]
+  }
+  ```
+  
+  ## Response Empty (200)
+  ```json
+  {
+    "message": "Items fetched successfully",
+    "data": []
+  }
+  ```
+  
+  ## Response Unauthorized (401)
+  ```json
+  {
+    "message": "Authentication required"
+  }
+  ```
+  
+  ## Notes
+  - Requires valid authentication token
+  - Returns all items created by the current user
+  - Includes items with all statuses (OPEN, PENDING_CLAIM, RESOLVED, ARCHIVED)
+  - Includes both LOST and FOUND items
+  - Useful for users to track their own lost/found reports
+  - Results are ordered by creation date (newest first)
+}

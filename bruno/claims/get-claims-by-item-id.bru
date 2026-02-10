@@ -18,3 +18,76 @@ settings {
   encodeUrl: true
   timeout: 0
 }
+
+docs {
+  # Get Claims by Item ID (Public endpoint)
+  This endpoint retrieves all claims submitted for a specific item. This is useful for transparency and to show how many people are claiming ownership of found items.
+  
+  ## Path Parameters
+  - id (string, UUID): Unique identifier of the item
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "Claims for item fetched successfully",
+    "data": [
+      {
+        "id": "019c239b-1234-5678-9abc-123456789abc",
+        "item_id": "019c239a-8423-70e2-a7fd-e60a7da60a77",
+        "claimant_id": "019bbc79-208b-7105-95ae-d29aa8f6ecd8",
+        "proof_text": "I lost this wallet yesterday. It has my driver's license...",
+        "proof_image_url": "https://example.com/proof-wallet.jpg",
+        "status": "PENDING",
+        "admin_notes": null,
+        "processed_by": null,
+        "created_at": "2026-01-15T14:30:00Z",
+        "updated_at": "2026-01-15T14:30:00Z",
+        "claimant": {
+          "id": "019bbc79-208b-7105-95ae-d29aa8f6ecd8",
+          "name": "John Doe",
+          "email": "john@example.com"
+        },
+        "item": {
+          "id": "019c239a-8423-70e2-a7fd-e60a7da60a77",
+          "name": "Found Black Wallet",
+          "type": "FOUND",
+          "status": "PENDING_CLAIM"
+        }
+      }
+    ]
+  }
+  ```
+  
+  ## Response Empty (200)
+  ```json
+  {
+    "message": "Claims for item fetched successfully",
+    "data": []
+  }
+  ```
+  
+  ## Response Not Found (404)
+  ```json
+  {
+    "message": "Item not found"
+  }
+  ```
+  
+  ## Response Invalid UUID (400)
+  ```json
+  {
+    "message": "Invalid itemId format"
+  }
+  ```
+  
+  ## Notes
+  - Public endpoint - no authentication required
+  - Returns all claims for the specified item
+  - Includes claimant information (name, email)
+  - Shows claim status and admin processing notes
+  - Includes item information for context
+  - Results are ordered by creation date (oldest first for fairness)
+  - Useful for transparency in the claims process
+  - Claimant proof details are visible to maintain transparency
+  - Admin notes are visible after processing to explain decisions
+}

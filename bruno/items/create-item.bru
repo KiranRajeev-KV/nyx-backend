@@ -29,11 +29,28 @@ settings {
 }
 
 docs {
-  # LOST item (no HubId, is_anonymous must be FALSE)
+  # Create Item
+  This endpoint creates a new lost or found item. The item type determines required fields and visibility rules.
+  
+  ## Required Fields
+  - name (string, 3-100 chars): Item title/name
+  - description (string, 10-1000 chars): Detailed description
+  - type (string): Must be "LOST" or "FOUND"
+  - is_anonymous (boolean): Hide reporter identity if true
+  
+  ## Optional Fields
+  - location (string, 5-200 chars): Location description
+  - time_at (string, RFC3339): When item was lost/found
+  - latitude (string): GPS latitude coordinate
+  - longitude (string): GPS longitude coordinate
+  - hub_id (string, UUID): Required for FOUND items, null for LOST
+  
+  ## Request Examples
+  
+  ### LOST Item (no hub_id required)
   ```json
   {
     "is_anonymous": false,
-    "hub_id": null, # can be null or just omitted entirly
     "name": "Black Wallet Lost Near Park",
     "description": "I lost my black leather wallet near Greenway Park last evening. It has all my cards inside.",
     "type": "LOST",
@@ -43,7 +60,8 @@ docs {
     "longitude": "98.765432"
   }
   ```
-  # FOUND item (hub required, is_anonymous can be TRUE or FALSE)
+  
+  ### FOUND Item (hub_id required)
   ```json
   {
     "is_anonymous": false,
@@ -57,4 +75,57 @@ docs {
     "longitude": "76.987654"
   }
   ```
+  
+  ## Response Success (201)
+  ```json
+  {
+    "message": "Item created successfully",
+    "data": {
+      "id": "019bbcd3-d654-76bf-98dc-121f7487b2e1",
+      "is_anonymous": false,
+      "name": "Black Wallet Lost Near Park",
+      "description": "I lost my black leather wallet near Greenway Park last evening. It has all my cards inside.",
+      "status": "OPEN",
+      "type": "LOST",
+      "location_description": "Near the fountain at Greenway Park",
+      "time_at": "2025-12-05T18:30:00Z",
+      "latitude": "12.345678",
+      "longitude": "98.765432",
+      "created_at": "2026-01-15T10:30:00Z",
+      "updated_at": "2026-01-15T10:30:00Z"
+    }
+  }
+  ```
+  
+  ## Response Validation Error (400)
+  ```json
+  {
+    "message": "Invalid request format for creating an item",
+    "error": {
+      "field": "type",
+      "message": "Type must be 'LOST' or 'FOUND'"
+    }
+  }
+  ```
+  
+  ## Response Hub Required (400)
+  ```json
+  {
+    "message": "Hub ID is required for FOUND items"
+  }
+  ```
+  
+  ## Response Unauthorized (401)
+  ```json
+  {
+    "message": "Authentication required"
+  }
+  ```
+  
+  ## Notes
+  - LOST items cannot have hub_id (must be null)
+  - FOUND items must have valid hub_id
+  - Anonymous items hide user identity from public
+  - Items start with "OPEN" status
+  - All items are publicly visible by default
 }

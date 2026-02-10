@@ -1,0 +1,12 @@
+pre-commit:
+  parallel: true
+  commands:
+    # 1. Block fmt.Println and fmt.Printf usage
+    prevent-fmt-println:
+      glob: "*.go"
+      run: ./scripts/prevent-fmt-println.sh {staged_files}
+
+    # 2. Fail if any file is not gofmt formatted
+    go-fmt:
+      glob: "*.go"
+      run: ./scripts/go-fmt.sh {staged_files}

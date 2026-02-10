@@ -22,3 +22,109 @@ settings {
   encodeUrl: true
   timeout: 0
 }
+
+docs {
+  # Create Claim
+  This endpoint allows a user to submit a claim for a FOUND item, providing proof of ownership. Claims are reviewed by administrators.
+  
+  ## Required Fields
+  - item_id (string, UUID): ID of the FOUND item to claim
+  - proof_text (string, 10-1000 chars): Detailed description proving ownership
+  
+  ## Optional Fields
+  - proof_image_url (string, URL): URL to proof image or document
+  
+  ## Request Body
+  ```json
+  {
+    "item_id": "019c239a-8423-70e2-a7fd-e60a7da60a77",
+    "proof_text": "I lost this wallet yesterday. It has my driver's license (John Doe, exp 2025), a credit card ending in 1234, and a photo of my dog. There's a small scratch on the back corner.",
+    "proof_image_url": "https://example.com/proof-wallet.jpg"
+  }
+  ```
+  
+  ## Response Success (201)
+  ```json
+  {
+    "message": "Claim submitted successfully",
+    "data": {
+      "id": "019c239b-1234-5678-9abc-123456789abc",
+      "item_id": "019c239a-8423-70e2-a7fd-e60a7da60a77",
+      "claimant_id": "019bbc79-208b-7105-95ae-d29aa8f6ecd8",
+      "proof_text": "I lost this wallet yesterday. It has my driver's license...",
+      "proof_image_url": "https://example.com/proof-wallet.jpg",
+      "status": "PENDING",
+      "created_at": "2026-01-15T14:30:00Z",
+      "updated_at": "2026-01-15T14:30:00Z"
+    }
+  }
+  ```
+  
+  ## Response Validation Error (400)
+  ```json
+  {
+    "message": "Invalid request format for creating a claim",
+    "error": {
+      "field": "proof_text",
+      "message": "Proof text must be between 10 and 1000 characters"
+    }
+  }
+  ```
+  
+  ## Response Not Found (404)
+  ```json
+  {
+    "message": "Item not found"
+  }
+  ```
+  
+  ## Response Cannot Claim OWN Item (400)
+  ```json
+  {
+    "message": "You cannot claim your own item"
+  }
+  ```
+  
+  ## Response Wrong Item Type (400)
+  ```json
+  {
+    "message": "Only FOUND items can be claimed"
+  }
+  ```
+  
+  ## Response Item Not Available (400)
+  ```json
+  {
+    "message": "This item is not available for claiming"
+  }
+  ```
+  
+  ## Response Already Claimed (400)
+  ```json
+  {
+    "message": "You have already claimed this item"
+  }
+  ```
+  
+  ## Response Previously Rejected (400)
+  ```json
+  {
+    "message": "You have already claimed this item and it was rejected. You cannot claim it again."
+  }
+  ```
+  
+  ## Response Unauthorized (401)
+  ```json
+  {
+    "message": "Authentication required"
+  }
+  ```
+  
+  ## Notes
+  - Only FOUND items with OPEN or PENDING_CLAIM status can be claimed
+  - Users cannot claim their own items
+  - Each user can only claim an item once
+  - Automatically sets item status to PENDING_CLAIM
+  - Claims require admin approval to be processed
+  - Proof should be specific and detailed to help verification
+}
