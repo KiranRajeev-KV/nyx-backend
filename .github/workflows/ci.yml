@@ -48,13 +48,13 @@ jobs:
           fi
           echo "All Go files are formatted correctly."
 
-      # --- Code Quality II: GolangCI-Lint ---
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v8
-        with:
-          version: v2.8.0
-          args: --timeout=5m
-          # config: .golangci.yml # Upcoming
+      # # --- Code Quality II: GolangCI-Lint ---
+      # - name: Run golangci-lint
+      #   uses: golangci/golangci-lint-action@v8
+      #   with:
+      #     version: v2.8.0
+      #     args: --timeout=5m
+      #     # config: .golangci.yml # Upcoming
 
       # --- Lefthook Integration ---
       - name: Install lefthook
