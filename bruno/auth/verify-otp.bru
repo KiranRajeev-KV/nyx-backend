@@ -20,3 +20,63 @@ settings {
   encodeUrl: true
   timeout: 0
 }
+
+docs {
+  # Verify Email OTP
+  This endpoint verifies the user's email using a 6-digit OTP sent during registration. This is required before the user can log in.
+  
+  ## Required Fields
+  - otp (string, 6 digits): One-time password sent to user's email
+  
+  ## Request Body
+  ```json
+  {
+    "otp": "412193"
+  }
+  ```
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "Email verified successfully",
+    "data": {
+      "id": "019bbc79-208b-7105-95ae-d29aa8f6ecd8",
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "verified": true,
+      "created_at": "2026-01-15T10:30:00Z"
+    }
+  }
+  ```
+  
+  ## Response Validation Error (400)
+  ```json
+  {
+    "message": "Invalid request format for OTP verification",
+    "error": {
+      "field": "otp",
+      "message": "OTP must be a 6-digit number"
+    }
+  }
+  ```
+  
+  ## Response Invalid OTP (401)
+  ```json
+  {
+    "message": "Invalid OTP"
+  }
+  ```
+  
+  ## Response Expired OTP (410)
+  ```json
+  {
+    "message": "OTP has expired. Please request a new OTP."
+  }
+  ```
+  
+  ## Notes
+  - OTP is 6 digits long
+  - OTP expires after a configured time period
+  - During development, OTP is logged to console
+  - User can request new OTP using resend-otp endpoint
+}

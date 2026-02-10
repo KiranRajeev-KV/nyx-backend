@@ -14,3 +14,45 @@ settings {
   encodeUrl: true
   timeout: 0
 }
+
+docs {
+  # Resend Email OTP
+  This endpoint resends a new OTP to the user's email for email verification. Useful when the original OTP has expired or not received.
+  
+  ## Request Body
+  None (uses authentication token to identify user)
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "New OTP sent to your email successfully"
+  }
+  ```
+  
+  ## Response Unauthorized (401)
+  ```json
+  {
+    "message": "Authentication required"
+  }
+  ```
+  
+  ## Response Not Found (404)
+  ```json
+  {
+    "message": "User not found"
+  }
+  ```
+  
+  ## Response Already Verified (409)
+  ```json
+  {
+    "message": "Email is already verified"
+  }
+  ```
+  
+  ## Notes
+  - Requires valid authentication token
+  - New OTP invalidates previous OTP
+  - OTP is logged to console during development
+  - Rate limiting may apply to prevent spam
+}

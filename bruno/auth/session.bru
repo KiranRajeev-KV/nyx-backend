@@ -14,3 +14,48 @@ settings {
   encodeUrl: true
   timeout: 0
 }
+
+docs {
+  # Check Session Status
+  This endpoint retrieves the current user's session information and validates their authentication status.
+  
+  ## Request Body
+  None
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "Session is valid",
+    "data": {
+      "id": "019bbc79-208b-7105-95ae-d29aa8f6ecd8",
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "verified": true,
+      "role": "user",
+      "created_at": "2026-01-15T10:30:00Z",
+      "last_login": "2026-01-15T14:25:00Z"
+    }
+  }
+  ```
+  
+  ## Response Unauthorized (401)
+  ```json
+  {
+    "message": "Invalid or expired session"
+  }
+  ```
+  
+  ## Response Missing Token (400)
+  ```json
+  {
+    "message": "Authentication token is required"
+  }
+  ```
+  
+  ## Notes
+  - Requires valid access token in HTTP-only cookies
+  - Returns user profile information
+  - Use this to check if user is still authenticated
+  - Helpful for frontend session management
+  - Can be used to refresh user data after profile updates
+}

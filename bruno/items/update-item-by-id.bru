@@ -31,3 +31,90 @@ settings {
   encodeUrl: true
   timeout: 0
 }
+
+docs {
+  # Update Item by ID (Owner only)
+  This endpoint updates item details. Only the item owner can update their own items. Uses PATCH for partial updates - only include fields you want to modify.
+  
+  ## Path Parameters
+  - id (string, UUID): Unique identifier of the item
+  
+  ## Optional Fields
+  - name (string, 3-100 chars): Updated item name
+  - description (string, 10-1000 chars): Updated description
+  - location (string, 5-200 chars): Updated location description
+  - time_at (string, RFC3339): Updated timestamp
+  - latitude (string): Updated GPS latitude
+  - longitude (string): Updated GPS longitude
+  - hub_id (string, UUID): Updated hub (for FOUND items only)
+  
+  ## Request Body
+  ```json
+  {
+    "name": "Updated Found Keys",
+    "description": "Found these keys again and updating coordinates.",
+    "location": "Just outside the bus stop",
+    "time_at": "2026-01-20T12:30:00Z",
+    "latitude": "10.111222",
+    "longitude": "75.333444",
+    "hub_id": "019bbc79-2089-7889-a6c9-ddf8f864026a"
+  }
+  ```
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "Item updated successfully",
+    "data": {
+      "id": "019bbcd3-d654-76bf-98dc-121f7487b2e1",
+      "is_anonymous": false,
+      "name": "Updated Found Keys",
+      "description": "Found these keys again and updating coordinates.",
+      "status": "OPEN",
+      "type": "FOUND",
+      "location_description": "Just outside the bus stop",
+      "time_at": "2026-01-20T12:30:00Z",
+      "latitude": "10.111222",
+      "longitude": "75.333444",
+      "created_at": "2026-01-15T10:30:00Z",
+      "updated_at": "2026-01-15T11:45:00Z"
+    }
+  }
+  ```
+  
+  ## Response Not Found (404)
+  ```json
+  {
+    "message": "Item not found or you are not authorized to update it"
+  }
+  ```
+  
+  ## Response Validation Error (400)
+  ```json
+  {
+    "message": "Invalid time format for TimeAt"
+  }
+  ```
+  
+  ## Response Invalid Hub (400)
+  ```json
+  {
+    "message": "Invalid Hub ID"
+  }
+  ```
+  
+  ## Response Unauthorized (401)
+  ```json
+  {
+    "message": "Authentication required"
+  }
+  ```
+  
+  ## Notes
+  - Only the item owner can update items
+  - Uses PATCH for partial updates
+  - Can't change item type (LOST/FOUND) or anonymous status
+  - Hub validation applies (FOUND items must have valid hub)
+  - Time format must be RFC3339
+  - Updated timestamp is automatically set
+}

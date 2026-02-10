@@ -14,3 +14,31 @@ settings {
   encodeUrl: true
   timeout: 0
 }
+
+docs {
+  # User Logout
+  This endpoint logs out the current user by invalidating their session and clearing authentication cookies.
+  
+  ## Request Body
+  None
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "Logout successful"
+  }
+  ```
+  
+  ## Response Unauthorized (401)
+  ```json
+  {
+    "message": "Authentication required"
+  }
+  ```
+  
+  ## Notes
+  - Requires valid authentication token
+  - Clears HTTP-only cookies (access_token and refresh_token)
+  - Invalidates the current session
+  - No further authenticated requests can be made without logging in again
+}

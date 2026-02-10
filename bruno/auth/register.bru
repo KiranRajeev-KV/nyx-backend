@@ -27,3 +27,52 @@ settings {
   encodeUrl: true
   timeout: 0
 }
+
+docs {
+  # User Registration
+  This endpoint registers a new user in the system. After registration, the user must verify their email using OTP before they can log in.
+  
+  ## Required Fields
+  - name (string, 3-100 chars): User's full name
+  - email (string, valid email): User's email address
+  - password (string, 8-50 chars): Password with uppercase, lowercase, and numbers
+  
+  ## Request Body
+  ```json
+  {
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "password": "StrongPassword123"
+  }
+  ```
+  
+  ## Response Success (201)
+  ```json
+  {
+    "message": "User registered successfully. Please check your email for OTP verification."
+  }
+  ```
+  
+  ## Response Validation Error (400)
+  ```json
+  {
+    "message": "Invalid request format for user registration",
+    "error": {
+      "field": "name",
+      "message": "Name is required and must be between 3 and 100 characters"
+    }
+  }
+  ```
+  
+  ## Response Conflict (409)
+  ```json
+  {
+    "message": "Email already exists"
+  }
+  ```
+  
+  ## Notes
+  - An OTP (6-digit code) will be generated and logged to console for development
+  - User cannot login until email is verified
+  - Password must contain at least one uppercase letter, one lowercase letter, and one digit
+}

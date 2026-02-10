@@ -14,3 +14,62 @@ settings {
   encodeUrl: true
   timeout: 0
 }
+
+docs {
+  # Get All Claims by Current User
+  This endpoint retrieves all claims submitted by the currently authenticated user, including claims with all statuses.
+  
+  ## Request Body
+  None (uses authentication token to identify user)
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "User claims fetched successfully",
+    "data": [
+      {
+        "id": "019c239b-1234-5678-9abc-123456789abc",
+        "item_id": "019c239a-8423-70e2-a7fd-e60a7da60a77",
+        "claimant_id": "019bbc79-208b-7105-95ae-d29aa8f6ecd8",
+        "proof_text": "I lost this wallet yesterday. It has my driver's license...",
+        "proof_image_url": "https://example.com/proof-wallet.jpg",
+        "status": "PENDING",
+        "admin_notes": null,
+        "processed_by": null,
+        "created_at": "2026-01-15T14:30:00Z",
+        "updated_at": "2026-01-15T14:30:00Z",
+        "item": {
+          "id": "019c239a-8423-70e2-a7fd-e60a7da60a77",
+          "name": "Found Black Wallet",
+          "type": "FOUND",
+          "status": "PENDING_CLAIM"
+        }
+      }
+    ]
+  }
+  ```
+  
+  ## Response Empty (200)
+  ```json
+  {
+    "message": "User claims fetched successfully",
+    "data": []
+  }
+  ```
+  
+  ## Response Unauthorized (401)
+  ```json
+  {
+    "message": "Authentication required"
+  }
+  ```
+  
+  ## Notes
+  - Requires valid authentication token
+  - Returns all claims submitted by the current user
+  - Includes claims with all statuses (PENDING, APPROVED, REJECTED)
+  - Includes related item information for context
+  - Results are ordered by creation date (newest first)
+  - Useful for users to track their claim status history
+  - Admin notes are visible if the claim has been processed
+}
