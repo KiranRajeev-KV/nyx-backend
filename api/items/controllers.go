@@ -804,7 +804,7 @@ func SimilarItems(c *gin.Context) {
 	}
 
 	// Check if item has an embedding
-	if len(item.Embedding.Slice()) == 0 {
+	if len(item.Embedding) == 0 {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "This item does not have an image embedding. Please upload an image first.",
 		})
@@ -813,7 +813,7 @@ func SimilarItems(c *gin.Context) {
 	}
 
 	// Get the embedding vector
-	embeddingVector := item.Embedding.Slice()
+	embeddingVector := item.Embedding
 
 	// Search for similar found items
 	similarItems, err := q.SearchSimilarFoundItems(ctx, conn, db.SearchSimilarFoundItemsParams{
