@@ -96,7 +96,7 @@ INSERT INTO items (
     location_description, latitude, longitude, time_at, is_anonymous
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id
+RETURNING id, type
 `
 
 type SeedItemParams struct {
@@ -113,7 +113,12 @@ type SeedItemParams struct {
 	IsAnonymous         bool               `json:"is_anonymous"`
 }
 
-func (q *Queries) SeedItem(ctx context.Context, db DBTX, arg SeedItemParams) (uuid.UUID, error) {
+type SeedItemRow struct {
+	ID   uuid.UUID `json:"id"`
+	Type ItemType  `json:"type"`
+}
+
+func (q *Queries) SeedItem(ctx context.Context, db DBTX, arg SeedItemParams) (SeedItemRow, error) {
 	row := db.QueryRow(ctx, seedItem,
 		arg.UserID,
 		arg.HubID,
@@ -127,9 +132,9 @@ func (q *Queries) SeedItem(ctx context.Context, db DBTX, arg SeedItemParams) (uu
 		arg.TimeAt,
 		arg.IsAnonymous,
 	)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
+	var i SeedItemRow
+	err := row.Scan(&i.ID, &i.Type)
+	return i, err
 }
 
 const seedUser = `-- name: SeedUser :one
