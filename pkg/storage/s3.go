@@ -18,6 +18,8 @@ type S3Service struct {
 	BucketName       string
 	Endpoint         string
 	InternalEndpoint string
+	accessKey        string
+	secretKey        string
 }
 
 var S3 *S3Service
@@ -55,6 +57,8 @@ func InitS3(endpoint, region, bucket, accessKey, secretKey string, internalEndpo
 		BucketName:       bucket,
 		Endpoint:         endpoint,
 		InternalEndpoint: internalEndpoint,
+		accessKey:        accessKey,
+		secretKey:        secretKey,
 	}
 
 	log.Println("[OK]: S3 Service initialized successfully")
@@ -78,6 +82,7 @@ func (s *S3Service) GeneratePresignedPutURL(ctx context.Context, objectKey strin
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion("us-east-1"),
 		config.WithEndpointResolverWithOptions(customResolver),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(s.accessKey, s.secretKey, "")),
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to load AWS config: %w", err)
