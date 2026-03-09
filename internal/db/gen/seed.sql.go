@@ -35,14 +35,15 @@ func (q *Queries) SeedAuditLog(ctx context.Context, db DBTX, arg SeedAuditLogPar
 }
 
 const seedClaim = `-- name: SeedClaim :one
-INSERT INTO claims (item_id, claimant_id, status, proof_text, similarity_score)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO claims (item_id, claimant_id, lost_item_id, status, proof_text, similarity_score)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id
 `
 
 type SeedClaimParams struct {
 	ItemID          uuid.UUID     `json:"item_id"`
 	ClaimantID      uuid.UUID     `json:"claimant_id"`
+	LostItemID      uuid.NullUUID `json:"lost_item_id"`
 	Status          ClaimStatus   `json:"status"`
 	ProofText       pgtype.Text   `json:"proof_text"`
 	SimilarityScore pgtype.Float8 `json:"similarity_score"`
@@ -52,6 +53,7 @@ func (q *Queries) SeedClaim(ctx context.Context, db DBTX, arg SeedClaimParams) (
 	row := db.QueryRow(ctx, seedClaim,
 		arg.ItemID,
 		arg.ClaimantID,
+		arg.LostItemID,
 		arg.Status,
 		arg.ProofText,
 		arg.SimilarityScore,
@@ -91,9 +93,9 @@ func (q *Queries) SeedHub(ctx context.Context, db DBTX, arg SeedHubParams) (uuid
 const seedItem = `-- name: SeedItem :one
 INSERT INTO items (
     user_id, hub_id, name, description, type, status, 
-    location_description, latitude, longitude, time_at
+    location_description, latitude, longitude, time_at, is_anonymous
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING id
 `
 
@@ -108,6 +110,7 @@ type SeedItemParams struct {
 	Latitude            pgtype.Text        `json:"latitude"`
 	Longitude           pgtype.Text        `json:"longitude"`
 	TimeAt              pgtype.Timestamptz `json:"time_at"`
+	IsAnonymous         bool               `json:"is_anonymous"`
 }
 
 func (q *Queries) SeedItem(ctx context.Context, db DBTX, arg SeedItemParams) (uuid.UUID, error) {
@@ -122,6 +125,7 @@ func (q *Queries) SeedItem(ctx context.Context, db DBTX, arg SeedItemParams) (uu
 		arg.Latitude,
 		arg.Longitude,
 		arg.TimeAt,
+		arg.IsAnonymous,
 	)
 	var id uuid.UUID
 	err := row.Scan(&id)
@@ -157,7 +161,7 @@ func (q *Queries) SeedUser(ctx context.Context, db DBTX, arg SeedUserParams) (uu
 }
 
 const truncateTables = `-- name: TruncateTables :exec
-TRUNCATE TABLE audit_logs, claims, items, hubs, users, user_onboarding RESTART IDENTITY CASCADE
+TRUNCATE TABLE audit_logs, claims, items, hubs, users, user_onboarding, password_resets RESTART IDENTITY CASCADE
 `
 
 func (q *Queries) TruncateTables(ctx context.Context, db DBTX) error {
