@@ -221,14 +221,14 @@ func (s *Seeder) seedHubs(ctx context.Context) ([]uuid.UUID, error) {
 	return hubIDs, nil
 }
 
-func (s *Seeder) seedItems(ctx context.Context, users []uuid.UUID, hubs []uuid.UUID) ([]uuid.UUID, error) {
+func (s *Seeder) seedItems(ctx context.Context, users []uuid.UUID, hubs []uuid.UUID) ([]db.Item, error) {
 	conn, err := cmd.DBPool.Acquire(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Release()
 
-	var itemIDs []uuid.UUID
+	var items []db.Item
 	types := []db.ItemType{db.ItemTypeLOST, db.ItemTypeFOUND}
 	statuses := []db.ItemStatus{db.ItemStatusOPEN, db.ItemStatusPENDINGCLAIM, db.ItemStatusRESOLVED, db.ItemStatusARCHIVED}
 
@@ -237,6 +237,7 @@ func (s *Seeder) seedItems(ctx context.Context, users []uuid.UUID, hubs []uuid.U
 		hubID := hubs[rand.Intn(len(hubs))]
 		itemType := types[rand.Intn(len(types))]
 		status := statuses[rand.Intn(len(statuses))]
+		isAnonymous := rand.Intn(10) < 2 // 20% chance of being anonymous
 
 		var currentHubID uuid.NullUUID
 		if itemType == db.ItemTypeFOUND {
@@ -252,7 +253,7 @@ func (s *Seeder) seedItems(ctx context.Context, users []uuid.UUID, hubs []uuid.U
 		long := fmt.Sprintf("-73.%d", 9000+rand.Intn(1000))
 		timeAt := time.Now().Add(-time.Duration(rand.Intn(100)) * time.Hour)
 
-		id, err := s.queries.SeedItem(ctx, conn, db.SeedItemParams{
+		item, err := s.queries.SeedItem(ctx, conn, db.SeedItemParams{
 			UserID:              userID,
 			HubID:               currentHubID,
 			Name:                name,
@@ -263,27 +264,44 @@ func (s *Seeder) seedItems(ctx context.Context, users []uuid.UUID, hubs []uuid.U
 			Latitude:            pgtype.Text{String: lat, Valid: true},
 			Longitude:           pgtype.Text{String: long, Valid: true},
 			TimeAt:              pgtype.Timestamptz{Time: timeAt, Valid: true},
+			IsAnonymous:         isAnonymous,
 		})
 		if err != nil {
 			return nil, err
 		}
-		itemIDs = append(itemIDs, id)
+		items = append(items, item)
 	}
-	return itemIDs, nil
+	return items, nil
 }
 
-func (s *Seeder) seedClaims(ctx context.Context, items []uuid.UUID, users []uuid.UUID) ([]uuid.UUID, error) {
+func (s *Seeder) seedClaims(ctx context.Context, items []db.Item, users []uuid.UUID) ([]uuid.UUID, error) {
 	conn, err := cmd.DBPool.Acquire(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Release()
 
+	var foundItems []uuid.UUID
+	var lostItems []uuid.UUID
+
+	for _, item := range items {
+		if item.Type == db.ItemTypeFOUND {
+			foundItems = append(foundItems, item.ID)
+		} else if item.Type == db.ItemTypeLOST {
+			lostItems = append(lostItems, item.ID)
+		}
+	}
+
+	if len(foundItems) == 0 || len(lostItems) == 0 {
+		return nil, nil
+	}
+
 	var claimIDs []uuid.UUID
 	statuses := []db.ClaimStatus{db.ClaimStatusPENDING, db.ClaimStatusAPPROVED, db.ClaimStatusREJECTED}
 
 	for i := 0; i < 15; i++ {
-		itemID := items[rand.Intn(len(items))]
+		foundItemID := foundItems[rand.Intn(len(foundItems))]
+		lostItemID := lostItems[rand.Intn(len(lostItems))]
 		claimantID := users[rand.Intn(len(users))]
 		status := statuses[rand.Intn(len(statuses))]
 
@@ -291,8 +309,9 @@ func (s *Seeder) seedClaims(ctx context.Context, items []uuid.UUID, users []uuid
 		score := 0.5 + rand.Float64()*0.5 // 0.5 - 1.0
 
 		id, err := s.queries.SeedClaim(ctx, conn, db.SeedClaimParams{
-			ItemID:          itemID,
+			ItemID:          foundItemID,
 			ClaimantID:      claimantID,
+			LostItemID:      uuid.NullUUID{UUID: lostItemID, Valid: true},
 			Status:          status,
 			ProofText:       pgtype.Text{String: proof, Valid: true},
 			SimilarityScore: pgtype.Float8{Float64: score, Valid: true},
@@ -306,12 +325,17 @@ func (s *Seeder) seedClaims(ctx context.Context, items []uuid.UUID, users []uuid
 	return claimIDs, nil
 }
 
-func (s *Seeder) seedAuditLogs(ctx context.Context, users, items, hubs, claims []uuid.UUID) error {
+func (s *Seeder) seedAuditLogs(ctx context.Context, users []uuid.UUID, items []db.Item, hubs []uuid.UUID, claims []uuid.UUID) error {
 	conn, err := cmd.DBPool.Acquire(ctx)
 	if err != nil {
 		return err
 	}
 	defer conn.Release()
+
+	itemIDs := make([]uuid.UUID, len(items))
+	for i, item := range items {
+		itemIDs[i] = item.ID
+	}
 
 	actions := []string{"CREATED", "UPDATED", "DELETED", "VIEWED"}
 	type target struct {
@@ -319,7 +343,7 @@ func (s *Seeder) seedAuditLogs(ctx context.Context, users, items, hubs, claims [
 		IDs  []uuid.UUID
 	}
 	targets := []target{
-		{db.TargetTypeITEM, items},
+		{db.TargetTypeITEM, itemIDs},
 		{db.TargetTypeUSER, users},
 		{db.TargetTypeHUB, hubs},
 		{db.TargetTypeCLAIM, claims},
