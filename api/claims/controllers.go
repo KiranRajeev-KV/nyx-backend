@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 
@@ -34,7 +35,12 @@ func CreateClaim(c *gin.Context) {
 		return
 	}
 
-	itemUUID, exists := pkg.GrabUuid(c, req.ItemID, "CLAIMS", "itemId")
+	foundItemUUID, exists := pkg.GrabUuid(c, req.FoundItemID, "CLAIMS", "foundItemId")
+	if !exists {
+		return
+	}
+
+	lostItemUUID, exists := pkg.GrabUuid(c, req.LostItemID, "CLAIMS", "lostItemId")
 	if !exists {
 		return
 	}
@@ -50,25 +56,42 @@ func CreateClaim(c *gin.Context) {
 
 	q := db.New()
 
-	// Check if item exists and is FOUND with OPEN or PENDING_CLAIM status
-	item, err := q.GetItemByID(ctx, conn, itemUUID)
+	// Fetch the FOUND item (the item being claimed)
+	foundItem, err := q.GetItemByID(ctx, conn, foundItemUUID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-				"message": "Item not found",
+				"message": "Found item not found",
 			})
-			logger.Log.WarnCtx(c, "[CLAIMS-WARN] Attempt to claim non-existent item")
+			logger.Log.WarnCtx(c, "[CLAIMS-WARN] Attempt to claim non-existent found item")
 			return
 		}
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 			"message": "Oops! Something happened. Please try again later",
 		})
-		logger.Log.ErrorCtx(c, "[CLAIMS-ERROR] Failed to fetch item for claim validation", err)
+		logger.Log.ErrorCtx(c, "[CLAIMS-ERROR] Failed to fetch found item for claim validation", err)
+		return
+	}
+
+	// Fetch the LOST item (the claimant's own item)
+	lostItem, err := q.GetItemByID(ctx, conn, lostItemUUID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+				"message": "Lost item not found",
+			})
+			logger.Log.WarnCtx(c, "[CLAIMS-WARN] Attempt to claim with non-existent lost item")
+			return
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[CLAIMS-ERROR] Failed to fetch lost item for claim validation", err)
 		return
 	}
 
 	// Business rule: Can only claim FOUND items
-	if item.Type != db.ItemTypeFOUND {
+	if foundItem.Type != db.ItemTypeFOUND {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "Only FOUND items can be claimed",
 		})
@@ -76,8 +99,26 @@ func CreateClaim(c *gin.Context) {
 		return
 	}
 
+	// Business rule: Lost item must be of type LOST
+	if lostItem.Type != db.ItemTypeLOST {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "Lost item must be of type LOST",
+		})
+		logger.Log.WarnCtx(c, "[CLAIMS-WARN] Attempt to use non-LOST item as lost item")
+		return
+	}
+
+	// Business rule: Lost item must belong to the claimant
+	if lostItem.UserID != userUUID {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+			"message": "You can only claim with your own lost items",
+		})
+		logger.Log.WarnCtx(c, "[CLAIMS-WARN] Attempt to claim with someone else's lost item")
+		return
+	}
+
 	// Business rule: Can only claim items with OPEN or PENDING_CLAIM status
-	if item.Status != db.ItemStatusOPEN && item.Status != db.ItemStatusPENDINGCLAIM {
+	if foundItem.Status != db.ItemStatusOPEN && foundItem.Status != db.ItemStatusPENDINGCLAIM {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "This item is not available for claiming",
 		})
@@ -85,8 +126,8 @@ func CreateClaim(c *gin.Context) {
 		return
 	}
 
-	// Business rule: Cannot claim own items
-	if item.UserID == userUUID {
+	// Business rule: Cannot claim own found items
+	if foundItem.UserID == userUUID {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "You cannot claim your own item",
 		})
@@ -94,9 +135,9 @@ func CreateClaim(c *gin.Context) {
 		return
 	}
 
-	// Business rule: Check if user has already claimed this item
+	// Business rule: Check if user has already claimed this found item
 	existingClaim, err := q.CheckExistingClaim(ctx, conn, db.CheckExistingClaimParams{
-		ItemID:     itemUUID,
+		ItemID:     foundItemUUID,
 		ClaimantID: userUUID,
 	})
 	if err == nil {
@@ -122,6 +163,21 @@ func CreateClaim(c *gin.Context) {
 		return
 	}
 
+	// Calculate similarity score between found and lost item embeddings
+	var similarityScore pgtype.Float8
+	if len(foundItem.Embedding.Slice()) > 0 && len(lostItem.Embedding.Slice()) > 0 {
+		// Use pgvector cosine distance to calculate similarity
+		// Cosine distance = 1 - cosine similarity
+		// We need to calculate cosine similarity: 1 - distance
+		// Using: (a · b) / (||a|| * ||b||)
+
+		similarity := cosineSimilarity(foundItem.Embedding.Slice(), lostItem.Embedding.Slice())
+		similarityScore = pgtype.Float8{Float64: similarity, Valid: true}
+	} else {
+		// If either item doesn't have an embedding, set to null
+		similarityScore = pgtype.Float8{Valid: false}
+	}
+
 	// All validations passed, create claim in transaction
 	tx, err := cmd.DBPool.Begin(ctx)
 	if pkg.HandleDbTxnErr(c, err, "CLAIMS") {
@@ -136,10 +192,12 @@ func CreateClaim(c *gin.Context) {
 	}
 
 	newClaim, err := q.CreateClaim(ctx, tx, db.CreateClaimParams{
-		ItemID:        itemUUID,
-		ClaimantID:    userUUID,
-		ProofText:     pgtype.Text{String: req.ProofText, Valid: true},
-		ProofImageUrl: proofImageUrl,
+		ItemID:          foundItemUUID,
+		ClaimantID:      userUUID,
+		LostItemID:      uuid.NullUUID{UUID: lostItemUUID, Valid: true},
+		ProofText:       pgtype.Text{String: req.ProofText, Valid: true},
+		ProofImageUrl:   proofImageUrl,
+		SimilarityScore: similarityScore,
 	})
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
@@ -151,7 +209,7 @@ func CreateClaim(c *gin.Context) {
 
 	// Update item status to PENDING_CLAIM
 	_, err = q.UpdateItemStatus(ctx, tx, db.UpdateItemStatusParams{
-		ID:     itemUUID,
+		ID:     foundItemUUID,
 		Status: db.ItemStatusPENDINGCLAIM,
 	})
 	if err != nil {
@@ -172,6 +230,29 @@ func CreateClaim(c *gin.Context) {
 		"data":    newClaim,
 	})
 	logger.Log.SuccessCtx(c)
+}
+
+// cosineSimilarity calculates the cosine similarity between two vectors
+func cosineSimilarity(a, b []float32) float64 {
+	if len(a) != len(b) || len(a) == 0 {
+		return 0
+	}
+
+	var dotProduct float64
+	var normA float64
+	var normB float64
+
+	for i := 0; i < len(a); i++ {
+		dotProduct += float64(a[i]) * float64(b[i])
+		normA += float64(a[i]) * float64(a[i])
+		normB += float64(b[i]) * float64(b[i])
+	}
+
+	if normA == 0 || normB == 0 {
+		return 0
+	}
+
+	return dotProduct / (math.Sqrt(normA) * math.Sqrt(normB))
 }
 
 func FetchUserClaims(c *gin.Context) {

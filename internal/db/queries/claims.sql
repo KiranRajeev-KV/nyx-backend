@@ -1,11 +1,11 @@
 -- name: CreateClaim :one
 INSERT INTO claims (
-    item_id, claimant_id, proof_text, proof_image_url, created_at, updated_at
+    item_id, claimant_id, lost_item_id, proof_text, proof_image_url, similarity_score, created_at, updated_at
 ) VALUES (
-    $1, $2, $3, $4, NOW(), NOW()
+    $1, $2, $3, $4, $5, $6, NOW(), NOW()
 )
 RETURNING 
-    id, item_id, claimant_id, status, created_at, updated_at;
+    id, item_id, claimant_id, lost_item_id, status, similarity_score, created_at, updated_at;
 
 -- name: FetchClaimsByUser :many
 SELECT 
@@ -109,7 +109,7 @@ FROM claims
 WHERE item_id = $1 AND status = 'PENDING';
 
 -- name: GetItemByID :one
-SELECT id, user_id, type, status
+SELECT id, user_id, type, status, embedding
 FROM items 
 WHERE id = $1;
 
