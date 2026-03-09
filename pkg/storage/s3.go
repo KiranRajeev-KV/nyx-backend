@@ -13,15 +13,16 @@ import (
 )
 
 type S3Service struct {
-	Client        *s3.Client
-	PresignClient *s3.PresignClient
-	BucketName    string
-	Endpoint      string
+	Client           *s3.Client
+	PresignClient    *s3.PresignClient
+	BucketName       string
+	Endpoint         string
+	InternalEndpoint string
 }
 
 var S3 *S3Service
 
-func InitS3(endpoint, region, bucket, accessKey, secretKey string) error {
+func InitS3(endpoint, region, bucket, accessKey, secretKey string, internalEndpoint string) error {
 	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, reg string, options ...interface{}) (aws.Endpoint, error) {
 		if endpoint != "" {
 			return aws.Endpoint{
@@ -49,10 +50,11 @@ func InitS3(endpoint, region, bucket, accessKey, secretKey string) error {
 	presignClient := s3.NewPresignClient(client)
 
 	S3 = &S3Service{
-		Client:        client,
-		PresignClient: presignClient,
-		BucketName:    bucket,
-		Endpoint:      endpoint,
+		Client:           client,
+		PresignClient:    presignClient,
+		BucketName:       bucket,
+		Endpoint:         endpoint,
+		InternalEndpoint: internalEndpoint,
 	}
 
 	log.Println("[OK]: S3 Service initialized successfully")
@@ -60,7 +62,34 @@ func InitS3(endpoint, region, bucket, accessKey, secretKey string) error {
 }
 
 func (s *S3Service) GeneratePresignedPutURL(ctx context.Context, objectKey string, lifetime time.Duration) (string, error) {
-	req, err := s.PresignClient.PresignPutObject(ctx, &s3.PutObjectInput{
+	endpoint := s.Endpoint
+	if s.InternalEndpoint != "" {
+		endpoint = s.InternalEndpoint
+	}
+
+	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, reg string, options ...interface{}) (aws.Endpoint, error) {
+		return aws.Endpoint{
+			PartitionID:   "aws",
+			URL:           endpoint,
+			SigningRegion: "us-east-1",
+		}, nil
+	})
+
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion("us-east-1"),
+		config.WithEndpointResolverWithOptions(customResolver),
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to load AWS config: %w", err)
+	}
+
+	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.UsePathStyle = true
+	})
+
+	presignClient := s3.NewPresignClient(client)
+
+	req, err := presignClient.PresignPutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(s.BucketName),
 		Key:    aws.String(objectKey),
 	}, func(opts *s3.PresignOptions) {
