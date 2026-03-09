@@ -31,20 +31,20 @@ func TestAdminFlow_Integration(t *testing.T) {
 		itemReq := models.CreateItemRequest{
 			Name:        "Claimable Watch",
 			Description: "Silver watch",
-			Type:        "FOUND", 
+			Type:        "FOUND",
 			Location:    "University Gym",
 			HubId:       &defaultHubID,
 		}
-		
+
 		body, _ := json.Marshal(itemReq)
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/api/v1/items/", bytes.NewBuffer(body))
 		req.Header.Set("Content-Type", "application/json")
 		addCookies(req, reporterCookie)
 		testRouter.ServeHTTP(w, req)
-		
+
 		require.Equal(t, http.StatusCreated, w.Code)
-		
+
 		var response map[string]interface{}
 		json.Unmarshal(w.Body.Bytes(), &response)
 		itemID = response["data"].(map[string]interface{})["id"].(string)
@@ -56,16 +56,16 @@ func TestAdminFlow_Integration(t *testing.T) {
 			ItemID:    itemID,
 			ProofText: "I have the matching receipt for this watch from 2024.",
 		}
-		
+
 		body, _ := json.Marshal(claimReq)
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("POST", "/api/v1/claims/", bytes.NewBuffer(body))
 		req.Header.Set("Content-Type", "application/json")
 		addCookies(req, userCookie)
 		testRouter.ServeHTTP(w, req)
-		
+
 		require.Equal(t, http.StatusCreated, w.Code)
-		
+
 		var response map[string]interface{}
 		json.Unmarshal(w.Body.Bytes(), &response)
 		claimID = response["data"].(map[string]interface{})["id"].(string)
@@ -81,7 +81,7 @@ func TestAdminFlow_Integration(t *testing.T) {
 		req, _ := http.NewRequest("PATCH", "/api/v1/claims/"+claimID, bytes.NewBuffer(body))
 		req.Header.Set("Content-Type", "application/json")
 		addCookies(req, userCookie)
-		
+
 		testRouter.ServeHTTP(w, req)
 		// Custom roles middleware might return 401 or 403
 		assert.Contains(t, []int{http.StatusForbidden, http.StatusUnauthorized}, w.Code)
@@ -89,16 +89,16 @@ func TestAdminFlow_Integration(t *testing.T) {
 
 	t.Run("INT-ADMIN-001: Approve Claim", func(t *testing.T) {
 		processReq := models.ProcessClaimRequest{
-			Status: "APPROVED",
+			Status:     "APPROVED",
 			AdminNotes: "Receipt verified",
 		}
 		body, _ := json.Marshal(processReq)
-		
+
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("PATCH", "/api/v1/claims/"+claimID, bytes.NewBuffer(body))
 		req.Header.Set("Content-Type", "application/json")
 		addCookies(req, adminCookie)
-		
+
 		testRouter.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
 
@@ -138,16 +138,16 @@ func TestAdminFlow_Integration(t *testing.T) {
 
 	t.Run("INT-ADMIN-002: Reject Claim", func(t *testing.T) {
 		processReq := models.ProcessClaimRequest{
-			Status: "REJECTED",
+			Status:     "REJECTED",
 			AdminNotes: "Insufficient proof",
 		}
 		body, _ := json.Marshal(processReq)
-		
+
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("PATCH", "/api/v1/claims/"+claim2ID, bytes.NewBuffer(body))
 		req.Header.Set("Content-Type", "application/json")
 		addCookies(req, adminCookie)
-		
+
 		testRouter.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
 
@@ -167,7 +167,7 @@ func TestAdminFlow_Integration(t *testing.T) {
 		hreq.Header.Set("Content-Type", "application/json")
 		addCookies(hreq, adminCookie)
 		testRouter.ServeHTTP(hw, hreq)
-		
+
 		var hubID string
 		testDBPool.QueryRow(context.Background(), "SELECT id FROM hubs WHERE name = 'Constraint Hub'").Scan(&hubID)
 
@@ -186,7 +186,7 @@ func TestAdminFlow_Integration(t *testing.T) {
 		dreq, _ := http.NewRequest("DELETE", "/api/v1/hubs/"+hubID, nil)
 		addCookies(dreq, adminCookie)
 		testRouter.ServeHTTP(dw, dreq)
-		
+
 		// Due to RESTRICT foreign key, this returns an error constraint violation
 		// Should be caught by the backend and returned as 409 Conflict (or 500 depending on generic error handling)
 		assert.Contains(t, []int{http.StatusConflict, http.StatusInternalServerError, http.StatusBadRequest}, dw.Code)

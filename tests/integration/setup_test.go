@@ -72,7 +72,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("failed to initialize PASETO keys: %v", err)
 	}
-	
+
 	// Try initializing RSA if available; tests usually only mandate PASETO for tokens
 	// No explicit InitRSAPair() required if test routes only handle PASETO auth
 
@@ -85,8 +85,8 @@ func TestMain(m *testing.M) {
 	// 3. Setup global Gin Router
 	gin.SetMode(gin.TestMode)
 	testRouter = gin.Default()
-	
-    // Mock email service
+
+	// Mock email service
 	mockEmailService := email.NewMockEmailService(true)
 	authApi.InitAuthRoutes(mockEmailService)
 
@@ -119,7 +119,7 @@ func cleanDB(t *testing.T) {
 
 	// Soft delete everything or hard delete for clean slate
 	tables := []string{"items", "claims", "hubs", "users", "user_onboarding"}
-	
+
 	for _, table := range tables {
 		query := fmt.Sprintf("TRUNCATE TABLE %s CASCADE;", table)
 		_, err := testDBPool.Exec(ctx, query)
