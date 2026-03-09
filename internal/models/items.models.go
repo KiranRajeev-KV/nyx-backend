@@ -82,3 +82,16 @@ type UploadItemImageResponse struct {
 	PresignedUrl string `json:"presigned_url"`
 	ObjectKey    string `json:"object_key"`
 }
+
+type SearchItemsRequest struct {
+	Query string `json:"q"`
+	Type  string `json:"type"`
+}
+
+func (r SearchItemsRequest) Validate() (errorMsg string, err error) {
+	err = v.ValidateStruct(&r,
+		v.Field(&r.Query, v.Required.Error("Search query is required"), v.Length(1, 200).Error("Search query must be between 1 and 200 characters")),
+		v.Field(&r.Type, v.When(r.Type != "", v.In("LOST", "FOUND").Error("Type must be either LOST or FOUND"))),
+	)
+	return "Invalid search request", err
+}

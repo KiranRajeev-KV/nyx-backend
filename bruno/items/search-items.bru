@@ -1,0 +1,95 @@
+meta {
+  name: search-items
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{BASE_URL}}/items/search?q
+  body: none
+  auth: inherit
+}
+
+params:query {
+  q: 
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  # Search Items (Public endpoint)
+  This endpoint performs full-text search on item names and descriptions using PostgreSQL full-text search. Results are ranked by relevance.
+  
+  ## Query Parameters
+  - q (required): Search query string
+    - Minimum 1 character
+    - Maximum 200 characters
+  - type (optional): Filter by item type - "LOST" or "FOUND"
+    - `?type=LOST` - Search only lost items
+    - `?type=FOUND` - Search only found items
+    - No parameter - Search all items
+  
+  ## Examples
+  ```
+  GET /items/search?q=wallet                    # Search all items
+  GET /items/search?q=wallet&type=LOST          # Search only lost items
+  GET /items/search?q=phone&type=FOUND          # Search only found items
+  ```
+  
+  ## How it works
+  - Uses PostgreSQL `to_tsvector` to index name + description
+  - Uses `plainto_tsquery` for fuzzy text matching
+  - Results ranked by `ts_rank` (relevance score)
+  - Only returns OPEN and PENDING_CLAIM status items
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "Search completed successfully",
+    "data": [
+      {
+        "id": "019bbcd3-d654-76bf-98dc-121f7487b2e1",
+        "name": "Lost Black Wallet",
+        "description": "Black leather wallet lost near the park",
+        "image_url_redacted": null,
+        "status": "OPEN",
+        "type": "LOST",
+        "created_at": "2026-01-15T10:30:00Z",
+        "updated_at": "2026-01-15T10:30:00Z"
+      }
+    ]
+  }
+  ```
+  
+  ## Response Empty (200)
+  ```json
+  {
+    "message": "Search completed successfully",
+    "data": []
+  }
+  ```
+  
+  ## Response Missing Query (400)
+  ```json
+  {
+    "message": "Search query is required"
+  }
+  ```
+  
+  ## Response Invalid Type (400)
+  ```json
+  {
+    "message": "Invalid 'type' query parameter. Must be 'LOST' or 'FOUND'"
+  }
+  ```
+  
+  ## Notes
+  - Requires authentication
+  - Returns only OPEN and PENDING_CLAIM status items
+  - Search is case-insensitive
+  - Partial word matches work (e.g., "wall" finds "wallet")
+  - Results are sorted by relevance (most relevant first)
+}

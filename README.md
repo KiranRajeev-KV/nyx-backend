@@ -94,6 +94,7 @@ task run    # Build and run
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | GET | `/items/` | Get all items (with optional `?type=LOST\|FOUND`) | Yes |
+| GET | `/items/search?q=...` | Search items by title/description (optional `?type=LOST\|FOUND`) | Yes |
 | GET | `/items/:id` | Get item by ID | Yes |
 | GET | `/items/me` | Get current user's items | User |
 | POST | `/items/` | Create new item | User |

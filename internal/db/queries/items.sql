@@ -217,3 +217,21 @@ RETURNING
     id,
     status,
     updated_at;
+
+-- name: SearchItems :many
+SELECT
+    id,
+    name,
+    description,
+    image_url_redacted,
+    status,
+    type,
+    created_at,
+    updated_at
+FROM
+    items
+WHERE
+    search_text @@ plainto_tsquery('english', $1)
+    AND (status = 'OPEN' OR status = 'PENDING_CLAIM')
+ORDER BY
+    ts_rank(search_text, plainto_tsquery('english', $1)) DESC;

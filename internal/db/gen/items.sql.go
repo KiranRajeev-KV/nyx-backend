@@ -423,6 +423,65 @@ func (q *Queries) FetchItemsByType(ctx context.Context, db DBTX, type_ ItemType)
 	return items, nil
 }
 
+const searchItems = `-- name: SearchItems :many
+SELECT
+    id,
+    name,
+    description,
+    image_url_redacted,
+    status,
+    type,
+    created_at,
+    updated_at
+FROM
+    items
+WHERE
+    search_text @@ plainto_tsquery('english', $1)
+    AND (status = 'OPEN' OR status = 'PENDING_CLAIM')
+ORDER BY
+    ts_rank(search_text, plainto_tsquery('english', $1)) DESC
+`
+
+type SearchItemsRow struct {
+	ID               uuid.UUID          `json:"id"`
+	Name             string             `json:"name"`
+	Description      pgtype.Text        `json:"description"`
+	ImageUrlRedacted pgtype.Text        `json:"image_url_redacted"`
+	Status           ItemStatus         `json:"status"`
+	Type             ItemType           `json:"type"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) SearchItems(ctx context.Context, db DBTX, plaintoTsquery string) ([]SearchItemsRow, error) {
+	rows, err := db.Query(ctx, searchItems, plaintoTsquery)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchItemsRow
+	for rows.Next() {
+		var i SearchItemsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.ImageUrlRedacted,
+			&i.Status,
+			&i.Type,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const softDeleteItemById = `-- name: SoftDeleteItemById :one
 UPDATE
     items

@@ -86,6 +86,64 @@ func FetchItems(c *gin.Context) {
 	logger.Log.SuccessCtx(c)
 }
 
+func SearchItems(c *gin.Context) {
+	query := c.Query("q")
+	typeParam := c.Query("type")
+
+	if query == "" {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "Search query is required",
+		})
+		logger.Log.WarnCtx(c, "[ITEMS-WARN] Missing search query")
+		return
+	}
+
+	if typeParam != "" && typeParam != "LOST" && typeParam != "FOUND" {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid 'type' query parameter. Must be 'LOST' or 'FOUND'",
+		})
+		logger.Log.WarnCtx(c, "[ITEMS-WARN] Invalid 'type' query parameter")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, err := cmd.DBPool.Acquire(ctx)
+	if pkg.HandleDbAcquireErr(c, err, "ITEMS") {
+		return
+	}
+	defer conn.Release()
+
+	q := db.New()
+
+	var items []db.SearchItemsRow
+
+	if typeParam != "" {
+		items, err = q.SearchItems(ctx, conn, query+" "+typeParam)
+	} else {
+		items, err = q.SearchItems(ctx, conn, query)
+	}
+
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to search items from DB", err)
+		return
+	}
+
+	if len(items) == 0 {
+		items = []db.SearchItemsRow{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Search completed successfully",
+		"data":    items,
+	})
+	logger.Log.SuccessCtx(c)
+}
+
 func CreateItem(c *gin.Context) {
 	req, ok := pkg.ValidateRequest[models.CreateItemRequest](c)
 	if !ok {

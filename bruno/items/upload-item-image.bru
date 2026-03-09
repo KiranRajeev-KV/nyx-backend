@@ -5,15 +5,23 @@ meta {
 }
 
 post {
-  url: {{BASE_URL}}/items/019bbcd3-d654-76bf-98dc-121f7487b2e1/image
+  url: {{BASE_URL}}/items/:id/image
   body: json
   auth: inherit
+}
+
+params:path {
+  id: 019bbcd3-d654-76bf-98dc-121f7487b2e1
 }
 
 body:json {
   {
     "content_type": "image/png"
   }
+}
+
+vars:pre-request {
+  id: 019bbcd3-d654-76bf-98dc-121f7487b2e1
 }
 
 settings {

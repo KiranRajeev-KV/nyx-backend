@@ -8,6 +8,9 @@ import (
 func ItemRoutes(router *gin.RouterGroup) {
 	items := router.Group("/items")
 	{
+		// Search (must be before /:id to avoid param collision)
+		items.GET("/search", mw.Auth, SearchItems)
+
 		// Public read‑only (auth required)
 		items.GET("/", mw.Auth, FetchItems)
 		items.GET("/:id", mw.Auth, FetchItemById)
