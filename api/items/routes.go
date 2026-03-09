@@ -8,6 +8,12 @@ import (
 func ItemRoutes(router *gin.RouterGroup) {
 	items := router.Group("/items")
 	{
+		// Search (must be before /:id to avoid param collision)
+		items.GET("/search", mw.Auth, SearchItems)
+
+		// Similar items (must be before /:id to avoid param collision)
+		items.GET("/similar/:id", mw.Auth, SimilarItems)
+
 		// Public read‑only (auth required)
 		items.GET("/", mw.Auth, FetchItems)
 		items.GET("/:id", mw.Auth, FetchItemById)
@@ -19,7 +25,7 @@ func ItemRoutes(router *gin.RouterGroup) {
 		items.GET("/me", mw.Auth, mw.CheckUserRole, FetchAllItemsByUserId)
 
 		// Update & delete — must be the owner
-		// TODO: items.POST("/:id/image", mw.Auth, mw.CheckUserRole, UploadItemImage) // to update the uploaded image_original
+		items.POST("/:id/image", mw.Auth, mw.CheckUserRole, UploadItemImage) // to get a presigned url for uploading image_original
 		items.PATCH("/:id", mw.Auth, mw.CheckUserRole, UpdateItemById)
 		items.PATCH("/:id/status", mw.Auth, mw.CheckUserRole, UpdateItemStatus)
 		items.DELETE("/:id", mw.Auth, mw.CheckUserRole, DeleteItemById)

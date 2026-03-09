@@ -11,8 +11,9 @@ import (
 
 func TestCreateClaimRequest_Valid_NoError(t *testing.T) {
 	req := models.CreateClaimRequest{
-		ItemID:    "550e8400-e29b-41d4-a716-446655440000",
-		ProofText: "I lost this item at the library on Monday afternoon.",
+		FoundItemID: "550e8400-e29b-41d4-a716-446655440000",
+		LostItemID:  "660e8400-e29b-41d4-a716-446655440001",
+		ProofText:   "I lost this item at the library on Monday afternoon.",
 	}
 	_, err := req.Validate()
 	assert.NoError(t, err)
@@ -21,7 +22,8 @@ func TestCreateClaimRequest_Valid_NoError(t *testing.T) {
 func TestCreateClaimRequest_ValidWithImageUrl_NoError(t *testing.T) {
 	imageUrl := "https://example.com/proof.jpg"
 	req := models.CreateClaimRequest{
-		ItemID:        "550e8400-e29b-41d4-a716-446655440000",
+		FoundItemID:   "550e8400-e29b-41d4-a716-446655440000",
+		LostItemID:    "660e8400-e29b-41d4-a716-446655440001",
 		ProofText:     "I lost this item at the library on Monday afternoon.",
 		ProofImageUrl: &imageUrl,
 	}
@@ -29,19 +31,21 @@ func TestCreateClaimRequest_ValidWithImageUrl_NoError(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestCreateClaimRequest_MissingItemID_ReturnsError(t *testing.T) {
+func TestCreateClaimRequest_MissingFoundItemID_ReturnsError(t *testing.T) {
 	req := models.CreateClaimRequest{
-		ProofText: "I lost this item at the library on Monday afternoon.",
+		LostItemID: "660e8400-e29b-41d4-a716-446655440001",
+		ProofText:  "I lost this item at the library on Monday afternoon.",
 	}
 	msg, err := req.Validate()
 	assert.Error(t, err)
 	assert.Equal(t, "Invalid request format for creating a claim", msg)
 }
 
-func TestCreateClaimRequest_InvalidItemID_ReturnsError(t *testing.T) {
+func TestCreateClaimRequest_InvalidFoundItemID_ReturnsError(t *testing.T) {
 	req := models.CreateClaimRequest{
-		ItemID:    "not-a-uuid",
-		ProofText: "I lost this item at the library on Monday afternoon.",
+		FoundItemID: "not-a-uuid",
+		LostItemID:  "660e8400-e29b-41d4-a716-446655440001",
+		ProofText:   "I lost this item at the library on Monday afternoon.",
 	}
 	_, err := req.Validate()
 	assert.Error(t, err)
@@ -49,7 +53,8 @@ func TestCreateClaimRequest_InvalidItemID_ReturnsError(t *testing.T) {
 
 func TestCreateClaimRequest_MissingProofText_ReturnsError(t *testing.T) {
 	req := models.CreateClaimRequest{
-		ItemID: "550e8400-e29b-41d4-a716-446655440000",
+		FoundItemID: "550e8400-e29b-41d4-a716-446655440000",
+		LostItemID:  "660e8400-e29b-41d4-a716-446655440001",
 	}
 	_, err := req.Validate()
 	assert.Error(t, err)
@@ -57,8 +62,9 @@ func TestCreateClaimRequest_MissingProofText_ReturnsError(t *testing.T) {
 
 func TestCreateClaimRequest_ProofTextTooShort_ReturnsError(t *testing.T) {
 	req := models.CreateClaimRequest{
-		ItemID:    "550e8400-e29b-41d4-a716-446655440000",
-		ProofText: "Too short",
+		FoundItemID: "550e8400-e29b-41d4-a716-446655440000",
+		LostItemID:  "660e8400-e29b-41d4-a716-446655440001",
+		ProofText:   "Too short",
 	}
 	_, err := req.Validate()
 	assert.Error(t, err)
@@ -70,8 +76,9 @@ func TestCreateClaimRequest_ProofTextTooLong_ReturnsError(t *testing.T) {
 		longText += "a"
 	}
 	req := models.CreateClaimRequest{
-		ItemID:    "550e8400-e29b-41d4-a716-446655440000",
-		ProofText: longText,
+		FoundItemID: "550e8400-e29b-41d4-a716-446655440000",
+		LostItemID:  "660e8400-e29b-41d4-a716-446655440001",
+		ProofText:   longText,
 	}
 	_, err := req.Validate()
 	assert.Error(t, err)
@@ -83,7 +90,8 @@ func TestCreateClaimRequest_ImageUrlTooLong_ReturnsError(t *testing.T) {
 		longUrl += "a"
 	}
 	req := models.CreateClaimRequest{
-		ItemID:        "550e8400-e29b-41d4-a716-446655440000",
+		FoundItemID:   "550e8400-e29b-41d4-a716-446655440000",
+		LostItemID:    "660e8400-e29b-41d4-a716-446655440001",
 		ProofText:     "I lost this item at the library on Monday afternoon.",
 		ProofImageUrl: &longUrl,
 	}

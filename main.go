@@ -15,6 +15,7 @@ import (
 	"github.com/KiranRajeev-KV/nyx-backend/internal/logger"
 	mw "github.com/KiranRajeev-KV/nyx-backend/internal/middleware"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
+	"github.com/KiranRajeev-KV/nyx-backend/pkg/embedding"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
@@ -81,6 +82,16 @@ func StartServer() {
 		logger.Log.Info("[INFO]: Email service is disabled")
 	}
 
+	// Initialize Embedding Service
+	var embeddingSvc *embedding.EmbeddingService
+	if cmd.Env.HuggingFaceAPIKey != "" {
+		embeddingSvc = embedding.NewEmbeddingService(cmd.Env.HuggingFaceAPIKey)
+		embedding.SetGlobalService(embeddingSvc)
+		logger.Log.Info("[OK]: Embedding service initialized successfully")
+	} else {
+		logger.Log.Warn("[WARN]: HuggingFace API key not configured - image embeddings disabled")
+	}
+
 	// === Router Setup ===
 
 	config := cors.Config{
@@ -107,14 +118,14 @@ func StartServer() {
 		logger.Log.SuccessCtx(c)
 	})
 
-	v1 := router.Group("/api/v1")
+	v2 := router.Group("/api/v2")
 
 	// Initialize auth routes with email service
 	apiAuth.InitAuthRoutes(emailService)
-	apiAuth.AuthRoutes(v1)
-	apiItems.ItemRoutes(v1)
-	apiHubs.HubRoutes(v1)
-	apiClaims.ClaimRoutes(v1)
+	apiAuth.AuthRoutes(v2)
+	apiItems.ItemRoutes(v2)
+	apiHubs.HubRoutes(v2)
+	apiClaims.ClaimRoutes(v2)
 
 	// === Server Setup ===
 

@@ -10,6 +10,7 @@ func ClaimRoutes(router *gin.RouterGroup) {
 	{
 		// User operations
 		claims.POST("/", mw.Auth, mw.CheckUserRole, CreateClaim)
+		claims.POST("/:id/proof-image", mw.Auth, mw.CheckUserRole, UploadClaimProofImage)
 		claims.GET("/me", mw.Auth, mw.CheckUserRole, FetchUserClaims)
 		claims.GET("/item/:id", mw.Auth, FetchClaimsByItem)
 

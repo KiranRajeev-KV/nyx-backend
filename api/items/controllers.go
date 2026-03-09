@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -11,10 +12,13 @@ import (
 	"github.com/KiranRajeev-KV/nyx-backend/internal/logger"
 	"github.com/KiranRajeev-KV/nyx-backend/internal/models"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
+	"github.com/KiranRajeev-KV/nyx-backend/pkg/embedding"
+	"github.com/KiranRajeev-KV/nyx-backend/pkg/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/pgvector/pgvector-go"
 )
 
 func FetchItems(c *gin.Context) {
@@ -79,6 +83,64 @@ func FetchItems(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Items fetched successfully",
+		"data":    items,
+	})
+	logger.Log.SuccessCtx(c)
+}
+
+func SearchItems(c *gin.Context) {
+	query := c.Query("q")
+	typeParam := c.Query("type")
+
+	if query == "" {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "Search query is required",
+		})
+		logger.Log.WarnCtx(c, "[ITEMS-WARN] Missing search query")
+		return
+	}
+
+	if typeParam != "" && typeParam != "LOST" && typeParam != "FOUND" {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid 'type' query parameter. Must be 'LOST' or 'FOUND'",
+		})
+		logger.Log.WarnCtx(c, "[ITEMS-WARN] Invalid 'type' query parameter")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, err := cmd.DBPool.Acquire(ctx)
+	if pkg.HandleDbAcquireErr(c, err, "ITEMS") {
+		return
+	}
+	defer conn.Release()
+
+	q := db.New()
+
+	var items []db.SearchItemsRow
+
+	if typeParam != "" {
+		items, err = q.SearchItems(ctx, conn, query+" "+typeParam)
+	} else {
+		items, err = q.SearchItems(ctx, conn, query)
+	}
+
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to search items from DB", err)
+		return
+	}
+
+	if len(items) == 0 {
+		items = []db.SearchItemsRow{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Search completed successfully",
 		"data":    items,
 	})
 	logger.Log.SuccessCtx(c)
@@ -296,6 +358,11 @@ func FetchAllItemsByUserId(c *gin.Context) {
 			"updated_at":           item.UpdatedAt,
 			"user":                 item.User,
 			"hub":                  hubObj,
+		}
+
+		// Build full image URL if image_url_original is set
+		if item.ImageUrlOriginal.Valid && item.ImageUrlOriginal.String != "" {
+			response[i]["image_url_original"] = storage.S3.GetPublicURL(item.ImageUrlOriginal.String)
 		}
 	}
 
@@ -521,6 +588,253 @@ func UpdateItemStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Item status updated successfully",
 		"data":    updatedItem,
+	})
+	logger.Log.SuccessCtx(c)
+}
+
+func UploadItemImage(c *gin.Context) {
+	id := c.Param("id")
+
+	itemUUID, exists := pkg.GrabUuid(c, id, "ITEMS", "itemId")
+	if !exists {
+		return
+	}
+
+	userId, ok := pkg.GrabUserId(c, "ITEMS")
+	if !ok {
+		return
+	}
+
+	userUUID, exists := pkg.GrabUuid(c, userId, "ITEMS", "userId")
+	if !exists {
+		return
+	}
+
+	req, okValidate := pkg.ValidateRequest[models.UploadItemImageRequest](c)
+	if !okValidate {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, err := cmd.DBPool.Acquire(ctx)
+	if pkg.HandleDbAcquireErr(c, err, "ITEMS") {
+		return
+	}
+	defer conn.Release()
+
+	q := db.New()
+
+	// Verify the user owns the item
+	item, err := q.FetchItemByID(ctx, conn, itemUUID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+				"message": "Item not found",
+			})
+			return
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to fetch item by ID", err)
+		return
+	}
+
+	// Unmarshal user object to get the ID and verify ownership
+	// The User JSON object contains the ID
+	var userObj map[string]interface{}
+	if err := json.Unmarshal(item.User, &userObj); err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to unmarshal user JSON", err)
+		return
+	}
+
+	// Verify ownership
+	if userStr, ok := userObj["id"].(string); !ok || userStr != userUUID.String() {
+		// Only admins or the owner can upload images for this item
+		isAdmin := false
+		if role, ok := c.Get("role"); ok && role == "ADMIN" {
+			isAdmin = true
+		}
+
+		if !isAdmin {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"message": "You are not authorized to upload images for this item",
+			})
+			logger.Log.WarnCtx(c, "[ITEMS-WARN] Unauthorized image upload attempt")
+			return
+		}
+	}
+
+	// Generate a unique object key
+	// Example: items/uuid/image_original_1234.jpg
+	fileExt := ".jpg"
+	switch req.ContentType {
+	case "image/png":
+		fileExt = ".png"
+	case "image/webp":
+		fileExt = ".webp"
+	}
+
+	imageUUID := uuid.New().String()
+	objectKey := fmt.Sprintf("items/%s/image_original_%s%s", itemUUID.String(), imageUUID, fileExt)
+
+	// Assume we want the presigned URL to be valid for 15 minutes
+	presignedUrl, err := storage.S3.GeneratePresignedPutURL(ctx, objectKey, 15*time.Minute)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to generate upload URL",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to generate presigned URL", err)
+		return
+	}
+
+	// We can update the Item record so we know what image path to expect
+	// Or we can wait for a webhook to confirm the upload.
+	// For now, we just update it immediately.
+	_, err = q.UpdateItemImageOriginal(ctx, conn, db.UpdateItemImageOriginalParams{
+		ID:               itemUUID,
+		UserID:           userUUID,
+		ImageUrlOriginal: pgtype.Text{String: objectKey, Valid: true},
+	})
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to update item with image key", err)
+		return
+	}
+
+	// Build full image URL for embedding generation
+	imageURL := fmt.Sprintf("%s/%s/%s", cmd.Env.S3Endpoint, cmd.Env.S3BucketName, objectKey)
+
+	// Generate embedding asynchronously in background
+	go func() {
+		embeddingSvc := embedding.GetGlobalService()
+		if embeddingSvc == nil {
+			logger.Log.Warn("[ITEMS-WARN] Embedding service not configured, skipping image embedding")
+			return
+		}
+
+		// Give client time to upload the image to S3
+		time.Sleep(2 * time.Second)
+
+		embedCtx, embedCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer embedCancel()
+
+		vector, err := embeddingSvc.GetImageEmbedding(imageURL)
+		if err != nil {
+			logger.Log.Error("[ITEMS-ERROR] Failed to generate embedding", err)
+			return
+		}
+
+		// Convert []float64 to []float32 for pgvector
+		vectorFloat32 := make([]float32, len(vector))
+		for i, v := range vector {
+			vectorFloat32[i] = float32(v)
+		}
+
+		// Update item with embedding
+		embedConn, err := cmd.DBPool.Acquire(embedCtx)
+		if err != nil {
+			logger.Log.Error("[ITEMS-ERROR] Failed to acquire DB connection for embedding", err)
+			return
+		}
+		defer embedConn.Release()
+
+		pgVector := pgvector.NewVector(vectorFloat32)
+		_, err = q.UpdateItemEmbedding(embedCtx, embedConn, db.UpdateItemEmbeddingParams{
+			ID:        itemUUID,
+			Embedding: pgVector,
+		})
+		if err != nil {
+			logger.Log.Error("[ITEMS-ERROR] Failed to update item embedding", err)
+			return
+		}
+		logger.Log.Info("[ITEMS-INFO] Image embedding generated successfully")
+	}()
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Upload URL generated successfully",
+		"data": models.UploadItemImageResponse{
+			PresignedUrl: presignedUrl,
+			ObjectKey:    objectKey,
+		},
+	})
+	logger.Log.SuccessCtx(c)
+}
+
+func SimilarItems(c *gin.Context) {
+	id := c.Param("id")
+
+	itemUUID, exists := pkg.GrabUuid(c, id, "ITEMS", "itemId")
+	if !exists {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, err := cmd.DBPool.Acquire(ctx)
+	if pkg.HandleDbAcquireErr(c, err, "ITEMS") {
+		return
+	}
+	defer conn.Release()
+
+	q := db.New()
+
+	// Fetch the item to get its embedding
+	item, err := q.FetchItemByID(ctx, conn, itemUUID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+				"message": "Item not found",
+			})
+			return
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to fetch item by ID", err)
+		return
+	}
+
+	// Check if item has an embedding
+	if len(item.Embedding.Slice()) == 0 {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "This item does not have an image embedding. Please upload an image first.",
+		})
+		logger.Log.WarnCtx(c, "[ITEMS-WARN] Item has no embedding for similarity search")
+		return
+	}
+
+	// Get the embedding vector
+	embeddingVector := item.Embedding.Slice()
+
+	// Search for similar found items
+	similarItems, err := q.SearchSimilarFoundItems(ctx, conn, db.SearchSimilarFoundItemsParams{
+		Embedding: pgvector.NewVector(embeddingVector),
+		ID:        itemUUID,
+	})
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to search similar items", err)
+		return
+	}
+
+	if len(similarItems) == 0 {
+		similarItems = []db.SearchSimilarFoundItemsRow{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Similar items fetched successfully",
+		"data":    similarItems,
 	})
 	logger.Log.SuccessCtx(c)
 }

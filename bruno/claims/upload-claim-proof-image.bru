@@ -1,0 +1,76 @@
+meta {
+  name: upload-claim-proof-image
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{BASE_URL}}/claims/019bbcd3-d654-76bf-98dc-121f7487b2e1/proof-image
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "content_type": "image/png"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  # Upload Claim Proof Image (Get Pre-signed URL)
+  This endpoint generates a pre-signed S3 PUT URL for uploading a proof image to a specific claim. Only the claimant can upload proof images for their own claims.
+  
+  ## Flow
+  1. Call this endpoint with the claim ID and desired content type
+  2. Receive a pre-signed PUT URL and object key
+  3. Use the pre-signed URL to PUT the image file directly to S3
+  
+  ## Required Fields
+  - **content_type** (string): MIME type of the image. Must be one of:
+    - `image/jpeg`
+    - `image/png`
+    - `image/webp`
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "Upload URL generated successfully",
+    "data": {
+      "presigned_url": "http://localhost:3900/nyx-items/claims/019bbcd3-.../proof_abc123.png?X-Amz-Algorithm=...",
+      "object_key": "claims/019bbcd3-.../proof_abc123.png"
+    }
+  }
+  ```
+  
+  ## Upload the Image (Step 2)
+  ```bash
+  curl -X PUT "<presigned_url>" \
+    -H "Content-Type: image/png" \
+    --data-binary @./proof-photo.png
+  ```
+  
+  ## Response Not Found (404)
+  ```json
+  {
+    "message": "Claim not found"
+  }
+  ```
+  
+  ## Response Forbidden (403)
+  ```json
+  {
+    "message": "You are not authorized to upload proof images for this claim"
+  }
+  ```
+  
+  ## Notes
+  - Only the claimant who created the claim can upload proof images
+  - The pre-signed URL expires after 15 minutes
+  - The claim's `proof_image_url` is updated in the database immediately
+  - Replace the UUID in the URL with a valid claim ID
+}

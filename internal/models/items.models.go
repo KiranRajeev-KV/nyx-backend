@@ -65,3 +65,33 @@ func (r UpdateItemStatusRequest) Validate() (errorMsg string, err error) {
 	)
 	return "Invalid request format for updating item status", err
 }
+
+type UploadItemImageRequest struct {
+	ContentType string `json:"content_type"`
+}
+
+func (r UploadItemImageRequest) Validate() (errorMsg string, err error) {
+	err = v.ValidateStruct(&r,
+		v.Field(&r.ContentType, v.Required.Error("Content-Type is required"), v.In("image/jpeg", "image/png", "image/webp").Error("Only JPEG, PNG, and WebP images are supported")),
+	)
+	return "Invalid request format for uploading item image", err
+}
+
+// UploadItemImageResponse is not validated since it is an outgoing response
+type UploadItemImageResponse struct {
+	PresignedUrl string `json:"presigned_url"`
+	ObjectKey    string `json:"object_key"`
+}
+
+type SearchItemsRequest struct {
+	Query string `json:"q"`
+	Type  string `json:"type"`
+}
+
+func (r SearchItemsRequest) Validate() (errorMsg string, err error) {
+	err = v.ValidateStruct(&r,
+		v.Field(&r.Query, v.Required.Error("Search query is required"), v.Length(1, 200).Error("Search query must be between 1 and 200 characters")),
+		v.Field(&r.Type, v.When(r.Type != "", v.In("LOST", "FOUND").Error("Type must be either LOST or FOUND"))),
+	)
+	return "Invalid search request", err
+}

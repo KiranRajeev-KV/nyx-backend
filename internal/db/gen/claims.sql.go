@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/pgvector/pgvector-go"
 )
 
 const checkExistingClaim = `-- name: CheckExistingClaim :one
@@ -38,43 +39,51 @@ func (q *Queries) CheckExistingClaim(ctx context.Context, db DBTX, arg CheckExis
 
 const createClaim = `-- name: CreateClaim :one
 INSERT INTO claims (
-    item_id, claimant_id, proof_text, proof_image_url, created_at, updated_at
+    item_id, claimant_id, lost_item_id, proof_text, proof_image_url, similarity_score, created_at, updated_at
 ) VALUES (
-    $1, $2, $3, $4, NOW(), NOW()
+    $1, $2, $3, $4, $5, $6, NOW(), NOW()
 )
 RETURNING 
-    id, item_id, claimant_id, status, created_at, updated_at
+    id, item_id, claimant_id, lost_item_id, status, similarity_score, created_at, updated_at
 `
 
 type CreateClaimParams struct {
-	ItemID        uuid.UUID   `json:"item_id"`
-	ClaimantID    uuid.UUID   `json:"claimant_id"`
-	ProofText     pgtype.Text `json:"proof_text"`
-	ProofImageUrl pgtype.Text `json:"proof_image_url"`
+	ItemID          uuid.UUID     `json:"item_id"`
+	ClaimantID      uuid.UUID     `json:"claimant_id"`
+	LostItemID      uuid.NullUUID `json:"lost_item_id"`
+	ProofText       pgtype.Text   `json:"proof_text"`
+	ProofImageUrl   pgtype.Text   `json:"proof_image_url"`
+	SimilarityScore pgtype.Float8 `json:"similarity_score"`
 }
 
 type CreateClaimRow struct {
-	ID         uuid.UUID          `json:"id"`
-	ItemID     uuid.UUID          `json:"item_id"`
-	ClaimantID uuid.UUID          `json:"claimant_id"`
-	Status     ClaimStatus        `json:"status"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	ID              uuid.UUID          `json:"id"`
+	ItemID          uuid.UUID          `json:"item_id"`
+	ClaimantID      uuid.UUID          `json:"claimant_id"`
+	LostItemID      uuid.NullUUID      `json:"lost_item_id"`
+	Status          ClaimStatus        `json:"status"`
+	SimilarityScore pgtype.Float8      `json:"similarity_score"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) CreateClaim(ctx context.Context, db DBTX, arg CreateClaimParams) (CreateClaimRow, error) {
 	row := db.QueryRow(ctx, createClaim,
 		arg.ItemID,
 		arg.ClaimantID,
+		arg.LostItemID,
 		arg.ProofText,
 		arg.ProofImageUrl,
+		arg.SimilarityScore,
 	)
 	var i CreateClaimRow
 	err := row.Scan(
 		&i.ID,
 		&i.ItemID,
 		&i.ClaimantID,
+		&i.LostItemID,
 		&i.Status,
+		&i.SimilarityScore,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -350,16 +359,17 @@ func (q *Queries) FetchClaimsByUser(ctx context.Context, db DBTX, claimantID uui
 }
 
 const getItemByID = `-- name: GetItemByID :one
-SELECT id, user_id, type, status
+SELECT id, user_id, type, status, embedding
 FROM items 
 WHERE id = $1
 `
 
 type GetItemByIDRow struct {
-	ID     uuid.UUID  `json:"id"`
-	UserID uuid.UUID  `json:"user_id"`
-	Type   ItemType   `json:"type"`
-	Status ItemStatus `json:"status"`
+	ID        uuid.UUID       `json:"id"`
+	UserID    uuid.UUID       `json:"user_id"`
+	Type      ItemType        `json:"type"`
+	Status    ItemStatus      `json:"status"`
+	Embedding pgvector.Vector `json:"embedding"`
 }
 
 func (q *Queries) GetItemByID(ctx context.Context, db DBTX, id uuid.UUID) (GetItemByIDRow, error) {
@@ -370,6 +380,7 @@ func (q *Queries) GetItemByID(ctx context.Context, db DBTX, id uuid.UUID) (GetIt
 		&i.UserID,
 		&i.Type,
 		&i.Status,
+		&i.Embedding,
 	)
 	return i, err
 }
@@ -429,6 +440,33 @@ func (q *Queries) ProcessClaim(ctx context.Context, db DBTX, arg ProcessClaimPar
 		&i.ProcessedBy,
 		&i.UpdatedAt,
 	)
+	return i, err
+}
+
+const updateClaimProofImage = `-- name: UpdateClaimProofImage :one
+UPDATE claims
+SET
+    proof_image_url = $2,
+    updated_at = NOW()
+WHERE id = $1 AND claimant_id = $3
+RETURNING id, proof_image_url
+`
+
+type UpdateClaimProofImageParams struct {
+	ID            uuid.UUID   `json:"id"`
+	ProofImageUrl pgtype.Text `json:"proof_image_url"`
+	ClaimantID    uuid.UUID   `json:"claimant_id"`
+}
+
+type UpdateClaimProofImageRow struct {
+	ID            uuid.UUID   `json:"id"`
+	ProofImageUrl pgtype.Text `json:"proof_image_url"`
+}
+
+func (q *Queries) UpdateClaimProofImage(ctx context.Context, db DBTX, arg UpdateClaimProofImageParams) (UpdateClaimProofImageRow, error) {
+	row := db.QueryRow(ctx, updateClaimProofImage, arg.ID, arg.ProofImageUrl, arg.ClaimantID)
+	var i UpdateClaimProofImageRow
+	err := row.Scan(&i.ID, &i.ProofImageUrl)
 	return i, err
 }
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/pgvector/pgvector-go"
 )
 
 const createItem = `-- name: CreateItem :one
@@ -174,6 +175,7 @@ SELECT
     i.hub_id,
     i.name,
     i.image_url_redacted,
+    i.image_url_original,
     i.description,
     i.status,
     i.type,
@@ -217,6 +219,7 @@ type FetchAllItemsByUserIdRow struct {
 	HubID               uuid.NullUUID      `json:"hub_id"`
 	Name                string             `json:"name"`
 	ImageUrlRedacted    pgtype.Text        `json:"image_url_redacted"`
+	ImageUrlOriginal    pgtype.Text        `json:"image_url_original"`
 	Description         pgtype.Text        `json:"description"`
 	Status              ItemStatus         `json:"status"`
 	Type                ItemType           `json:"type"`
@@ -246,6 +249,7 @@ func (q *Queries) FetchAllItemsByUserId(ctx context.Context, db DBTX, userID uui
 			&i.HubID,
 			&i.Name,
 			&i.ImageUrlRedacted,
+			&i.ImageUrlOriginal,
 			&i.Description,
 			&i.Status,
 			&i.Type,
@@ -283,6 +287,7 @@ SELECT
     i.time_at,
     i.latitude,
     i.longitude,
+    i.embedding,
     i.created_at,
     i.updated_at,
 
@@ -329,6 +334,7 @@ type FetchItemByIDRow struct {
 	TimeAt              pgtype.Timestamptz `json:"time_at"`
 	Latitude            pgtype.Text        `json:"latitude"`
 	Longitude           pgtype.Text        `json:"longitude"`
+	Embedding           pgvector.Vector    `json:"embedding"`
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 	User                []byte             `json:"user"`
@@ -352,6 +358,7 @@ func (q *Queries) FetchItemByID(ctx context.Context, db DBTX, id uuid.UUID) (Fet
 		&i.TimeAt,
 		&i.Latitude,
 		&i.Longitude,
+		&i.Embedding,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.User,
@@ -400,6 +407,132 @@ func (q *Queries) FetchItemsByType(ctx context.Context, db DBTX, type_ ItemType)
 	var items []FetchItemsByTypeRow
 	for rows.Next() {
 		var i FetchItemsByTypeRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.ImageUrlRedacted,
+			&i.Status,
+			&i.Type,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchItems = `-- name: SearchItems :many
+SELECT
+    id,
+    name,
+    description,
+    image_url_redacted,
+    status,
+    type,
+    created_at,
+    updated_at
+FROM
+    items
+WHERE
+    search_text @@ plainto_tsquery('english', $1)
+    AND (status = 'OPEN' OR status = 'PENDING_CLAIM')
+ORDER BY
+    ts_rank(search_text, plainto_tsquery('english', $1)) DESC
+`
+
+type SearchItemsRow struct {
+	ID               uuid.UUID          `json:"id"`
+	Name             string             `json:"name"`
+	Description      pgtype.Text        `json:"description"`
+	ImageUrlRedacted pgtype.Text        `json:"image_url_redacted"`
+	Status           ItemStatus         `json:"status"`
+	Type             ItemType           `json:"type"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) SearchItems(ctx context.Context, db DBTX, plaintoTsquery string) ([]SearchItemsRow, error) {
+	rows, err := db.Query(ctx, searchItems, plaintoTsquery)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchItemsRow
+	for rows.Next() {
+		var i SearchItemsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.ImageUrlRedacted,
+			&i.Status,
+			&i.Type,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchSimilarFoundItems = `-- name: SearchSimilarFoundItems :many
+SELECT
+    id,
+    name,
+    description,
+    image_url_redacted,
+    status,
+    type,
+    created_at,
+    updated_at
+FROM
+    items
+WHERE
+    type = 'FOUND'
+    AND status IN ('OPEN', 'PENDING_CLAIM')
+    AND embedding IS NOT NULL
+    AND id != $2
+ORDER BY
+    embedding <=> $1
+LIMIT 10
+`
+
+type SearchSimilarFoundItemsParams struct {
+	Embedding pgvector.Vector `json:"embedding"`
+	ID        uuid.UUID       `json:"id"`
+}
+
+type SearchSimilarFoundItemsRow struct {
+	ID               uuid.UUID          `json:"id"`
+	Name             string             `json:"name"`
+	Description      pgtype.Text        `json:"description"`
+	ImageUrlRedacted pgtype.Text        `json:"image_url_redacted"`
+	Status           ItemStatus         `json:"status"`
+	Type             ItemType           `json:"type"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) SearchSimilarFoundItems(ctx context.Context, db DBTX, arg SearchSimilarFoundItemsParams) ([]SearchSimilarFoundItemsRow, error) {
+	rows, err := db.Query(ctx, searchSimilarFoundItems, arg.Embedding, arg.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchSimilarFoundItemsRow
+	for rows.Next() {
+		var i SearchSimilarFoundItemsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -526,6 +659,60 @@ func (q *Queries) UpdateItemById(ctx context.Context, db DBTX, arg UpdateItemByI
 		&i.Longitude,
 		&i.UpdatedAt,
 	)
+	return i, err
+}
+
+const updateItemEmbedding = `-- name: UpdateItemEmbedding :one
+UPDATE items
+SET
+    embedding = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, embedding
+`
+
+type UpdateItemEmbeddingParams struct {
+	ID        uuid.UUID       `json:"id"`
+	Embedding pgvector.Vector `json:"embedding"`
+}
+
+type UpdateItemEmbeddingRow struct {
+	ID        uuid.UUID       `json:"id"`
+	Embedding pgvector.Vector `json:"embedding"`
+}
+
+func (q *Queries) UpdateItemEmbedding(ctx context.Context, db DBTX, arg UpdateItemEmbeddingParams) (UpdateItemEmbeddingRow, error) {
+	row := db.QueryRow(ctx, updateItemEmbedding, arg.ID, arg.Embedding)
+	var i UpdateItemEmbeddingRow
+	err := row.Scan(&i.ID, &i.Embedding)
+	return i, err
+}
+
+const updateItemImageOriginal = `-- name: UpdateItemImageOriginal :one
+UPDATE items
+SET
+    image_url_original = $3,
+    updated_at = NOW()
+WHERE id = $1
+  AND user_id = $2
+RETURNING id, image_url_original
+`
+
+type UpdateItemImageOriginalParams struct {
+	ID               uuid.UUID   `json:"id"`
+	UserID           uuid.UUID   `json:"user_id"`
+	ImageUrlOriginal pgtype.Text `json:"image_url_original"`
+}
+
+type UpdateItemImageOriginalRow struct {
+	ID               uuid.UUID   `json:"id"`
+	ImageUrlOriginal pgtype.Text `json:"image_url_original"`
+}
+
+func (q *Queries) UpdateItemImageOriginal(ctx context.Context, db DBTX, arg UpdateItemImageOriginalParams) (UpdateItemImageOriginalRow, error) {
+	row := db.QueryRow(ctx, updateItemImageOriginal, arg.ID, arg.UserID, arg.ImageUrlOriginal)
+	var i UpdateItemImageOriginalRow
+	err := row.Scan(&i.ID, &i.ImageUrlOriginal)
 	return i, err
 }
 

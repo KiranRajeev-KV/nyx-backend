@@ -83,6 +83,7 @@ SELECT
     i.time_at,
     i.latitude,
     i.longitude,
+    i.embedding,
     i.created_at,
     i.updated_at,
 
@@ -122,6 +123,7 @@ SELECT
     i.hub_id,
     i.name,
     i.image_url_redacted,
+    i.image_url_original,
     i.description,
     i.status,
     i.type,
@@ -181,6 +183,15 @@ RETURNING
     longitude,
     updated_at;
 
+-- name: UpdateItemImageOriginal :one
+UPDATE items
+SET
+    image_url_original = $3,
+    updated_at = NOW()
+WHERE id = $1
+  AND user_id = $2
+RETURNING id, image_url_original;
+
 -- name: SoftDeleteItemById :one
 UPDATE
     items
@@ -207,3 +218,50 @@ RETURNING
     id,
     status,
     updated_at;
+
+-- name: SearchItems :many
+SELECT
+    id,
+    name,
+    description,
+    image_url_redacted,
+    status,
+    type,
+    created_at,
+    updated_at
+FROM
+    items
+WHERE
+    search_text @@ plainto_tsquery('english', $1)
+    AND (status = 'OPEN' OR status = 'PENDING_CLAIM')
+ORDER BY
+    ts_rank(search_text, plainto_tsquery('english', $1)) DESC;
+
+-- name: UpdateItemEmbedding :one
+UPDATE items
+SET
+    embedding = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, embedding;
+
+-- name: SearchSimilarFoundItems :many
+SELECT
+    id,
+    name,
+    description,
+    image_url_redacted,
+    status,
+    type,
+    created_at,
+    updated_at
+FROM
+    items
+WHERE
+    type = 'FOUND'
+    AND status IN ('OPEN', 'PENDING_CLAIM')
+    AND embedding IS NOT NULL
+    AND id != $2
+ORDER BY
+    embedding <=> $1
+LIMIT 10;

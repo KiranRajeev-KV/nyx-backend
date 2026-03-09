@@ -251,6 +251,7 @@ type Claim struct {
 	ProcessedBy     uuid.NullUUID      `json:"processed_by"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	LostItemID      uuid.NullUUID      `json:"lost_item_id"`
 }
 
 type Hub struct {
@@ -284,6 +285,7 @@ type Item struct {
 	Metadata            []byte             `json:"metadata"`
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+	SearchText          interface{}        `json:"search_text"`
 }
 
 type PasswordReset struct {
