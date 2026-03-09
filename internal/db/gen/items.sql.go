@@ -287,7 +287,6 @@ SELECT
     i.time_at,
     i.latitude,
     i.longitude,
-    i.embedding::float4[] AS embedding,
     i.created_at,
     i.updated_at,
 
@@ -334,7 +333,6 @@ type FetchItemByIDRow struct {
 	TimeAt              pgtype.Timestamptz `json:"time_at"`
 	Latitude            pgtype.Text        `json:"latitude"`
 	Longitude           pgtype.Text        `json:"longitude"`
-	Embedding           []float32          `json:"embedding"`
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 	User                []byte             `json:"user"`
@@ -358,13 +356,23 @@ func (q *Queries) FetchItemByID(ctx context.Context, db DBTX, id uuid.UUID) (Fet
 		&i.TimeAt,
 		&i.Latitude,
 		&i.Longitude,
-		&i.Embedding,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.User,
 		&i.Hub,
 	)
 	return i, err
+}
+
+const fetchItemEmbedding = `-- name: FetchItemEmbedding :one
+SELECT embedding::float4[] as embedding FROM items WHERE id = $1
+`
+
+func (q *Queries) FetchItemEmbedding(ctx context.Context, db DBTX, id uuid.UUID) ([]float32, error) {
+	row := db.QueryRow(ctx, fetchItemEmbedding, id)
+	var embedding []float32
+	err := row.Scan(&embedding)
+	return embedding, err
 }
 
 const fetchItemsByType = `-- name: FetchItemsByType :many

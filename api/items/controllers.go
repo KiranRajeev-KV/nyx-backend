@@ -787,8 +787,8 @@ func SimilarItems(c *gin.Context) {
 
 	q := db.New()
 
-	// Fetch the item to get its embedding
-	item, err := q.FetchItemByID(ctx, conn, itemUUID)
+	// Fetch the item embedding for similarity math
+	embedding, err := q.FetchItemEmbedding(ctx, conn, itemUUID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
@@ -799,12 +799,12 @@ func SimilarItems(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 			"message": "Oops! Something happened. Please try again later",
 		})
-		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to fetch item by ID", err)
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to fetch item embedding", err)
 		return
 	}
 
 	// Check if item has an embedding
-	if len(item.Embedding) == 0 {
+	if len(embedding) == 0 {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "This item does not have an image embedding. Please upload an image first.",
 		})
@@ -813,7 +813,7 @@ func SimilarItems(c *gin.Context) {
 	}
 
 	// Get the embedding vector
-	embeddingVector := item.Embedding
+	embeddingVector := embedding
 
 	// Search for similar found items
 	similarItems, err := q.SearchSimilarFoundItems(ctx, conn, db.SearchSimilarFoundItemsParams{

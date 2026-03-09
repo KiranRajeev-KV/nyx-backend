@@ -83,7 +83,6 @@ SELECT
     i.time_at,
     i.latitude,
     i.longitude,
-    i.embedding::float4[] AS embedding,
     i.created_at,
     i.updated_at,
 
@@ -114,6 +113,9 @@ FROM items i
 LEFT JOIN users u ON u.id = i.user_id
 LEFT JOIN hubs h ON h.id = i.hub_id
 WHERE i.id = $1;
+
+-- name: FetchItemEmbedding :one
+SELECT embedding::float4[] as embedding FROM items WHERE id = $1;
 
 -- name: FetchAllItemsByUserId :many
 SELECT
