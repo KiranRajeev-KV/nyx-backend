@@ -728,7 +728,7 @@ func UploadItemImage(c *gin.Context) {
 
 		vector, err := embeddingSvc.GetImageEmbedding(imageURL)
 		if err != nil {
-			logger.Log.Error("[ITEMS-ERROR] Failed to generate embedding", err)
+			logger.Log.Warn(fmt.Sprintf("[ITEMS-WARN] Failed to generate embedding (optional feature): %v", err))
 			return
 		}
 
