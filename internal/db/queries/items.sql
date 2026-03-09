@@ -83,7 +83,6 @@ SELECT
     i.time_at,
     i.latitude,
     i.longitude,
-    i.embedding,
     i.created_at,
     i.updated_at,
 
