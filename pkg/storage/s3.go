@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -67,10 +66,8 @@ func InitS3(endpoint, region, bucket, accessKey, secretKey string, internalEndpo
 }
 
 func (s *S3Service) GeneratePresignedPutURL(ctx context.Context, objectKey string, lifetime time.Duration) (string, error) {
+	// Always sign with the public endpoint so the Host header matches
 	endpoint := s.Endpoint
-	if s.InternalEndpoint != "" {
-		endpoint = s.InternalEndpoint
-	}
 
 	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, reg string, options ...interface{}) (aws.Endpoint, error) {
 		return aws.Endpoint{
@@ -106,13 +103,7 @@ func (s *S3Service) GeneratePresignedPutURL(ctx context.Context, objectKey strin
 		return "", fmt.Errorf("could not generate presigned URL: %w", err)
 	}
 
-	// Replace internal endpoint with public endpoint in the URL
-	url := req.URL
-	if s.InternalEndpoint != "" && s.Endpoint != s.InternalEndpoint {
-		url = strings.Replace(url, s.InternalEndpoint, s.Endpoint, 1)
-	}
-
-	return url, nil
+	return req.URL, nil
 }
 
 // GetPublicURL returns the full URL for an object key (e.g. "items/uuid/image.png" -> "http://localhost:3900/nyx-items/items/uuid/image.png")
