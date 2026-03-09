@@ -46,5 +46,10 @@ sql:
           - db_type: "jsonb"
             go_type: "encoding/json.RawMessage"
 
+          - db_type: "vector"
+            go_type:
+              import: "github.com/pgvector/pgvector-go"
+              type: "Vector"
+
     database:
       uri: "postgresql://postgres:1234@localhost:5432/postgres"

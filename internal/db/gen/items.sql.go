@@ -287,6 +287,7 @@ SELECT
     i.time_at,
     i.latitude,
     i.longitude,
+    i.embedding,
     i.created_at,
     i.updated_at,
 
@@ -333,6 +334,7 @@ type FetchItemByIDRow struct {
 	TimeAt              pgtype.Timestamptz `json:"time_at"`
 	Latitude            pgtype.Text        `json:"latitude"`
 	Longitude           pgtype.Text        `json:"longitude"`
+	Embedding           pgvector.Vector    `json:"embedding"`
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 	User                []byte             `json:"user"`
@@ -356,6 +358,7 @@ func (q *Queries) FetchItemByID(ctx context.Context, db DBTX, id uuid.UUID) (Fet
 		&i.TimeAt,
 		&i.Latitude,
 		&i.Longitude,
+		&i.Embedding,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.User,
