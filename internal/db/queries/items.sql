@@ -76,6 +76,7 @@ SELECT
     i.hub_id,
     i.name,
     i.image_url_redacted,
+    i.image_url_original,
     i.description,
     i.status,
     i.type,
@@ -113,6 +114,9 @@ FROM items i
 LEFT JOIN users u ON u.id = i.user_id
 LEFT JOIN hubs h ON h.id = i.hub_id
 WHERE i.id = $1;
+
+-- name: FetchItemEmbedding :one
+SELECT embedding::float4[] as embedding FROM items WHERE id = $1;
 
 -- name: FetchAllItemsByUserId :many
 SELECT

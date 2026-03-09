@@ -10,3 +10,5 @@ coverage.*
 tests/app.test.rsa
 tests/app.test.pub.rsa
 .env.test
+
+nyx-backend

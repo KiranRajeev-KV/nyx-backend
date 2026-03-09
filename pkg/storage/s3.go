@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -17,6 +18,8 @@ type S3Service struct {
 	PresignClient *s3.PresignClient
 	BucketName    string
 	Endpoint      string
+	accessKey     string
+	secretKey     string
 }
 
 var S3 *S3Service
@@ -43,7 +46,7 @@ func InitS3(endpoint, region, bucket, accessKey, secretKey string) error {
 	}
 
 	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.UsePathStyle = true // Important for Garage and MinIO
+		o.UsePathStyle = true // Important for Garage, MinIO, and Supabase
 	})
 
 	presignClient := s3.NewPresignClient(client)
@@ -53,6 +56,8 @@ func InitS3(endpoint, region, bucket, accessKey, secretKey string) error {
 		PresignClient: presignClient,
 		BucketName:    bucket,
 		Endpoint:      endpoint,
+		accessKey:     accessKey,
+		secretKey:     secretKey,
 	}
 
 	log.Println("[OK]: S3 Service initialized successfully")
@@ -74,7 +79,19 @@ func (s *S3Service) GeneratePresignedPutURL(ctx context.Context, objectKey strin
 	return req.URL, nil
 }
 
-// GetPublicURL returns the full URL for an object key (e.g. "items/uuid/image.png" -> "http://localhost:3900/nyx-items/items/uuid/image.png")
+// GetPublicURL returns the full public URL for an object key.
+// For Supabase: https://[project-ref].supabase.co/storage/v1/object/public/[bucket]/[key]
+// For S3/Garage: https://[endpoint]/[bucket]/[key]
 func (s *S3Service) GetPublicURL(objectKey string) string {
+	// Check if this is Supabase (endpoint contains .storage.supabase.co)
+	if strings.Contains(s.Endpoint, ".storage.supabase.co") {
+		// Extract project-ref from endpoint
+		// e.g., https://xxx.storage.supabase.co/storage/v1/s3 -> xxx.supabase.co
+		projectRef := strings.ReplaceAll(s.Endpoint, ".storage.supabase.co/storage/v1/s3", "")
+		projectRef = strings.TrimPrefix(projectRef, "https://")
+		return fmt.Sprintf("https://%s.supabase.co/storage/v1/object/public/%s/%s", projectRef, s.BucketName, objectKey)
+	}
+
+	// Default S3/Garage format
 	return fmt.Sprintf("%s/%s/%s", s.Endpoint, s.BucketName, objectKey)
 }

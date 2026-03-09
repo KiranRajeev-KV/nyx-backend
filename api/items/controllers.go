@@ -279,25 +279,31 @@ func FetchItemById(c *gin.Context) {
 		}
 	}
 
+	response := gin.H{
+		"id":                   item.ID,
+		"is_anonymous":         item.IsAnonymous,
+		"name":                 item.Name,
+		"image_url_redacted":   item.ImageUrlRedacted,
+		"description":          item.Description,
+		"status":               item.Status,
+		"type":                 item.Type,
+		"location_description": item.LocationDescription,
+		"time_at":              item.TimeAt,
+		"latitude":             item.Latitude,
+		"longitude":            item.Longitude,
+		"created_at":           item.CreatedAt,
+		"updated_at":           item.UpdatedAt,
+		"user":                 userObj,
+		"hub":                  hubObj,
+	}
+
+	if item.ImageUrlOriginal.Valid && item.ImageUrlOriginal.String != "" {
+		response["image_url_original"] = storage.S3.GetPublicURL(item.ImageUrlOriginal.String)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Item fetched successfully",
-		"data": gin.H{
-			"id":                   item.ID,
-			"is_anonymous":         item.IsAnonymous,
-			"name":                 item.Name,
-			"image_url_redacted":   item.ImageUrlRedacted,
-			"description":          item.Description,
-			"status":               item.Status,
-			"type":                 item.Type,
-			"location_description": item.LocationDescription,
-			"time_at":              item.TimeAt,
-			"latitude":             item.Latitude,
-			"longitude":            item.Longitude,
-			"created_at":           item.CreatedAt,
-			"updated_at":           item.UpdatedAt,
-			"user":                 userObj,
-			"hub":                  hubObj,
-		},
+		"data":    response,
 	})
 	logger.Log.SuccessCtx(c)
 }
@@ -728,7 +734,7 @@ func UploadItemImage(c *gin.Context) {
 
 		vector, err := embeddingSvc.GetImageEmbedding(imageURL)
 		if err != nil {
-			logger.Log.Error("[ITEMS-ERROR] Failed to generate embedding", err)
+			logger.Log.Warn(fmt.Sprintf("[ITEMS-WARN] Failed to generate embedding (optional feature): %v", err))
 			return
 		}
 
@@ -787,8 +793,8 @@ func SimilarItems(c *gin.Context) {
 
 	q := db.New()
 
-	// Fetch the item to get its embedding
-	item, err := q.FetchItemByID(ctx, conn, itemUUID)
+	// Fetch the item embedding for similarity math
+	embedding, err := q.FetchItemEmbedding(ctx, conn, itemUUID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
@@ -799,12 +805,12 @@ func SimilarItems(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 			"message": "Oops! Something happened. Please try again later",
 		})
-		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to fetch item by ID", err)
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to fetch item embedding", err)
 		return
 	}
 
 	// Check if item has an embedding
-	if len(item.Embedding.Slice()) == 0 {
+	if len(embedding) == 0 {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "This item does not have an image embedding. Please upload an image first.",
 		})
@@ -813,7 +819,7 @@ func SimilarItems(c *gin.Context) {
 	}
 
 	// Get the embedding vector
-	embeddingVector := item.Embedding.Slice()
+	embeddingVector := embedding
 
 	// Search for similar found items
 	similarItems, err := q.SearchSimilarFoundItems(ctx, conn, db.SearchSimilarFoundItemsParams{

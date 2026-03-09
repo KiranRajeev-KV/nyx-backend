@@ -48,7 +48,7 @@ func (s *EmbeddingService) GetImageEmbedding(imageURL string) ([]float64, error)
 		return nil, fmt.Errorf("HuggingFace API key not configured")
 	}
 
-	url := fmt.Sprintf("https://api-inference.huggingface.co/models/%s", s.model)
+	url := fmt.Sprintf("https://router.huggingface.co/models/%s", s.model)
 
 	payload := map[string]interface{}{
 		"inputs": map[string]string{
