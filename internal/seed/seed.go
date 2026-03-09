@@ -221,14 +221,14 @@ func (s *Seeder) seedHubs(ctx context.Context) ([]uuid.UUID, error) {
 	return hubIDs, nil
 }
 
-func (s *Seeder) seedItems(ctx context.Context, users []uuid.UUID, hubs []uuid.UUID) ([]db.Item, error) {
+func (s *Seeder) seedItems(ctx context.Context, users []uuid.UUID, hubs []uuid.UUID) ([]db.SeedItemRow, error) {
 	conn, err := cmd.DBPool.Acquire(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Release()
 
-	var items []db.Item
+	var items []db.SeedItemRow
 	types := []db.ItemType{db.ItemTypeLOST, db.ItemTypeFOUND}
 	statuses := []db.ItemStatus{db.ItemStatusOPEN, db.ItemStatusPENDINGCLAIM, db.ItemStatusRESOLVED, db.ItemStatusARCHIVED}
 
@@ -274,7 +274,7 @@ func (s *Seeder) seedItems(ctx context.Context, users []uuid.UUID, hubs []uuid.U
 	return items, nil
 }
 
-func (s *Seeder) seedClaims(ctx context.Context, items []db.Item, users []uuid.UUID) ([]uuid.UUID, error) {
+func (s *Seeder) seedClaims(ctx context.Context, items []db.SeedItemRow, users []uuid.UUID) ([]uuid.UUID, error) {
 	conn, err := cmd.DBPool.Acquire(ctx)
 	if err != nil {
 		return nil, err
@@ -325,7 +325,7 @@ func (s *Seeder) seedClaims(ctx context.Context, items []db.Item, users []uuid.U
 	return claimIDs, nil
 }
 
-func (s *Seeder) seedAuditLogs(ctx context.Context, users []uuid.UUID, items []db.Item, hubs []uuid.UUID, claims []uuid.UUID) error {
+func (s *Seeder) seedAuditLogs(ctx context.Context, users []uuid.UUID, items []db.SeedItemRow, hubs []uuid.UUID, claims []uuid.UUID) error {
 	conn, err := cmd.DBPool.Acquire(ctx)
 	if err != nil {
 		return err
