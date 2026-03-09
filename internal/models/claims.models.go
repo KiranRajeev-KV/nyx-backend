@@ -32,3 +32,19 @@ func (r ProcessClaimRequest) Validate() (errorMsg string, err error) {
 	)
 	return "Invalid request format for processing a claim", err
 }
+
+type UploadClaimProofImageRequest struct {
+	ContentType string `json:"content_type"`
+}
+
+func (r UploadClaimProofImageRequest) Validate() (errorMsg string, err error) {
+	err = v.ValidateStruct(&r,
+		v.Field(&r.ContentType, v.Required.Error("Content type is required"), v.In("image/jpeg", "image/png", "image/webp").Error("Only JPEG, PNG, and WebP images are supported")),
+	)
+	return "Invalid request format for uploading claim proof image", err
+}
+
+type UploadClaimProofImageResponse struct {
+	PresignedUrl string `json:"presigned_url"`
+	ObjectKey    string `json:"object_key"`
+}

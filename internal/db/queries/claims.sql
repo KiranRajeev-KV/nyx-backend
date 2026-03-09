@@ -118,3 +118,11 @@ UPDATE items
 SET status = $2, updated_at = NOW()
 WHERE id = $1
 RETURNING id, status, updated_at;
+
+-- name: UpdateClaimProofImage :one
+UPDATE claims
+SET
+    proof_image_url = $2,
+    updated_at = NOW()
+WHERE id = $1 AND claimant_id = $3
+RETURNING id, proof_image_url;

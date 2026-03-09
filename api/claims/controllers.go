@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/KiranRajeev-KV/nyx-backend/internal/logger"
 	"github.com/KiranRajeev-KV/nyx-backend/internal/models"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
+	"github.com/KiranRajeev-KV/nyx-backend/pkg/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -441,6 +443,111 @@ func ProcessClaim(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Claim processed successfully",
 		"data":    response,
+	})
+	logger.Log.SuccessCtx(c)
+}
+
+func UploadClaimProofImage(c *gin.Context) {
+	id := c.Param("id")
+
+	claimUUID, exists := pkg.GrabUuid(c, id, "CLAIMS", "claimId")
+	if !exists {
+		return
+	}
+
+	userId, ok := pkg.GrabUserId(c, "CLAIMS")
+	if !ok {
+		return
+	}
+
+	userUUID, exists := pkg.GrabUuid(c, userId, "CLAIMS", "userId")
+	if !exists {
+		return
+	}
+
+	req, okValidate := pkg.ValidateRequest[models.UploadClaimProofImageRequest](c)
+	if !okValidate {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, err := cmd.DBPool.Acquire(ctx)
+	if pkg.HandleDbAcquireErr(c, err, "CLAIMS") {
+		return
+	}
+	defer conn.Release()
+
+	q := db.New()
+
+	// Verify claim exists and belongs to the user
+	claim, err := q.FetchClaimByID(ctx, conn, claimUUID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+				"message": "Claim not found",
+			})
+			return
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[CLAIMS-ERROR] Failed to fetch claim by ID", err)
+		return
+	}
+
+	// Verify the user is the claimant
+	if claim.ClaimantID != userUUID {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+			"message": "You are not authorized to upload proof images for this claim",
+		})
+		logger.Log.WarnCtx(c, "[CLAIMS-WARN] Unauthorized proof image upload attempt")
+		return
+	}
+
+	// Generate unique object key
+	fileExt := ".jpg"
+	switch req.ContentType {
+	case "image/png":
+		fileExt = ".png"
+	case "image/webp":
+		fileExt = ".webp"
+	}
+
+	imageUUID := uuid.New().String()
+	objectKey := fmt.Sprintf("claims/%s/proof_%s%s", claimUUID.String(), imageUUID, fileExt)
+
+	// Generate presigned URL (valid for 15 minutes)
+	presignedUrl, err := storage.S3.GeneratePresignedPutURL(ctx, objectKey, 15*time.Minute)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to generate upload URL",
+		})
+		logger.Log.ErrorCtx(c, "[CLAIMS-ERROR] Failed to generate presigned URL", err)
+		return
+	}
+
+	// Update claim record with proof image key
+	_, err = q.UpdateClaimProofImage(ctx, conn, db.UpdateClaimProofImageParams{
+		ID:            claimUUID,
+		ProofImageUrl: pgtype.Text{String: objectKey, Valid: true},
+		ClaimantID:    userUUID,
+	})
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[CLAIMS-ERROR] Failed to update claim with proof image key", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Upload URL generated successfully",
+		"data": models.UploadClaimProofImageResponse{
+			PresignedUrl: presignedUrl,
+			ObjectKey:    objectKey,
+		},
 	})
 	logger.Log.SuccessCtx(c)
 }

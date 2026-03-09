@@ -432,6 +432,33 @@ func (q *Queries) ProcessClaim(ctx context.Context, db DBTX, arg ProcessClaimPar
 	return i, err
 }
 
+const updateClaimProofImage = `-- name: UpdateClaimProofImage :one
+UPDATE claims
+SET
+    proof_image_url = $2,
+    updated_at = NOW()
+WHERE id = $1 AND claimant_id = $3
+RETURNING id, proof_image_url
+`
+
+type UpdateClaimProofImageParams struct {
+	ID            uuid.UUID   `json:"id"`
+	ProofImageUrl pgtype.Text `json:"proof_image_url"`
+	ClaimantID    uuid.UUID   `json:"claimant_id"`
+}
+
+type UpdateClaimProofImageRow struct {
+	ID            uuid.UUID   `json:"id"`
+	ProofImageUrl pgtype.Text `json:"proof_image_url"`
+}
+
+func (q *Queries) UpdateClaimProofImage(ctx context.Context, db DBTX, arg UpdateClaimProofImageParams) (UpdateClaimProofImageRow, error) {
+	row := db.QueryRow(ctx, updateClaimProofImage, arg.ID, arg.ProofImageUrl, arg.ClaimantID)
+	var i UpdateClaimProofImageRow
+	err := row.Scan(&i.ID, &i.ProofImageUrl)
+	return i, err
+}
+
 const updateItemStatus = `-- name: UpdateItemStatus :one
 UPDATE items 
 SET status = $2, updated_at = NOW()
