@@ -11,6 +11,9 @@ func ItemRoutes(router *gin.RouterGroup) {
 		// Search (must be before /:id to avoid param collision)
 		items.GET("/search", mw.Auth, SearchItems)
 
+		// Similar items (must be before /:id to avoid param collision)
+		items.GET("/similar/:id", mw.Auth, SimilarItems)
+
 		// Public read‑only (auth required)
 		items.GET("/", mw.Auth, FetchItems)
 		items.GET("/:id", mw.Auth, FetchItemById)

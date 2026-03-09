@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/pgvector/pgvector-go"
 )
 
 const createItem = `-- name: CreateItem :one
@@ -286,6 +287,7 @@ SELECT
     i.time_at,
     i.latitude,
     i.longitude,
+    i.embedding,
     i.created_at,
     i.updated_at,
 
@@ -332,6 +334,7 @@ type FetchItemByIDRow struct {
 	TimeAt              pgtype.Timestamptz `json:"time_at"`
 	Latitude            pgtype.Text        `json:"latitude"`
 	Longitude           pgtype.Text        `json:"longitude"`
+	Embedding           pgvector.Vector    `json:"embedding"`
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 	User                []byte             `json:"user"`
@@ -355,6 +358,7 @@ func (q *Queries) FetchItemByID(ctx context.Context, db DBTX, id uuid.UUID) (Fet
 		&i.TimeAt,
 		&i.Latitude,
 		&i.Longitude,
+		&i.Embedding,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.User,
@@ -482,6 +486,73 @@ func (q *Queries) SearchItems(ctx context.Context, db DBTX, plaintoTsquery strin
 	return items, nil
 }
 
+const searchSimilarFoundItems = `-- name: SearchSimilarFoundItems :many
+SELECT
+    id,
+    name,
+    description,
+    image_url_redacted,
+    status,
+    type,
+    created_at,
+    updated_at
+FROM
+    items
+WHERE
+    type = 'FOUND'
+    AND status IN ('OPEN', 'PENDING_CLAIM')
+    AND embedding IS NOT NULL
+    AND id != $2
+ORDER BY
+    embedding <=> $1
+LIMIT 10
+`
+
+type SearchSimilarFoundItemsParams struct {
+	Embedding pgvector.Vector `json:"embedding"`
+	ID        uuid.UUID       `json:"id"`
+}
+
+type SearchSimilarFoundItemsRow struct {
+	ID               uuid.UUID          `json:"id"`
+	Name             string             `json:"name"`
+	Description      pgtype.Text        `json:"description"`
+	ImageUrlRedacted pgtype.Text        `json:"image_url_redacted"`
+	Status           ItemStatus         `json:"status"`
+	Type             ItemType           `json:"type"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) SearchSimilarFoundItems(ctx context.Context, db DBTX, arg SearchSimilarFoundItemsParams) ([]SearchSimilarFoundItemsRow, error) {
+	rows, err := db.Query(ctx, searchSimilarFoundItems, arg.Embedding, arg.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchSimilarFoundItemsRow
+	for rows.Next() {
+		var i SearchSimilarFoundItemsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.ImageUrlRedacted,
+			&i.Status,
+			&i.Type,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const softDeleteItemById = `-- name: SoftDeleteItemById :one
 UPDATE
     items
@@ -588,6 +659,32 @@ func (q *Queries) UpdateItemById(ctx context.Context, db DBTX, arg UpdateItemByI
 		&i.Longitude,
 		&i.UpdatedAt,
 	)
+	return i, err
+}
+
+const updateItemEmbedding = `-- name: UpdateItemEmbedding :one
+UPDATE items
+SET
+    embedding = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, embedding
+`
+
+type UpdateItemEmbeddingParams struct {
+	ID        uuid.UUID       `json:"id"`
+	Embedding pgvector.Vector `json:"embedding"`
+}
+
+type UpdateItemEmbeddingRow struct {
+	ID        uuid.UUID       `json:"id"`
+	Embedding pgvector.Vector `json:"embedding"`
+}
+
+func (q *Queries) UpdateItemEmbedding(ctx context.Context, db DBTX, arg UpdateItemEmbeddingParams) (UpdateItemEmbeddingRow, error) {
+	row := db.QueryRow(ctx, updateItemEmbedding, arg.ID, arg.Embedding)
+	var i UpdateItemEmbeddingRow
+	err := row.Scan(&i.ID, &i.Embedding)
 	return i, err
 }
 

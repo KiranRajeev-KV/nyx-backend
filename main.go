@@ -15,6 +15,7 @@ import (
 	"github.com/KiranRajeev-KV/nyx-backend/internal/logger"
 	mw "github.com/KiranRajeev-KV/nyx-backend/internal/middleware"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
+	"github.com/KiranRajeev-KV/nyx-backend/pkg/embedding"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
@@ -79,6 +80,16 @@ func StartServer() {
 		logger.Log.Info("[OK]: Email service initialized successfully")
 	} else {
 		logger.Log.Info("[INFO]: Email service is disabled")
+	}
+
+	// Initialize Embedding Service
+	var embeddingSvc *embedding.EmbeddingService
+	if cmd.Env.HuggingFaceAPIKey != "" {
+		embeddingSvc = embedding.NewEmbeddingService(cmd.Env.HuggingFaceAPIKey)
+		embedding.SetGlobalService(embeddingSvc)
+		logger.Log.Info("[OK]: Embedding service initialized successfully")
+	} else {
+		logger.Log.Warn("[WARN]: HuggingFace API key not configured - image embeddings disabled")
 	}
 
 	// === Router Setup ===

@@ -1,0 +1,82 @@
+meta {
+  name: similar-items
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{BASE_URL}}/items/similar/{{itemId}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  # Similar Items (Image Similarity Search)
+  This endpoint finds visually similar FOUND items based on the image embedding of a LOST item. Uses CLIP embeddings for visual similarity matching.
+  
+  ## How It Works
+  - Takes a LOST item ID as input
+  - Looks up the item's image embedding (generated when image was uploaded)
+  - Searches for FOUND items with similar embeddings
+  - Returns up to 10 similar items ranked by cosine similarity
+  
+  ## URL Parameters
+  - `:id` - The UUID of the LOST item to find similar items for
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "Similar items fetched successfully",
+    "data": [
+      {
+        "id": "019bbcd3-d654-76bf-98dc-121f7487b2e1",
+        "name": "Found Black Wallet",
+        "description": "Found a black leather wallet near the park bench",
+        "image_url_redacted": "https://example.com/found/wallet.jpg",
+        "status": "OPEN",
+        "type": "FOUND",
+        "created_at": "2026-01-15T10:30:00Z",
+        "updated_at": "2026-01-15T10:30:00Z"
+      }
+    ]
+  }
+  ```
+  
+  ## Response Empty (200)
+  ```json
+  {
+    "message": "Similar items fetched successfully",
+    "data": []
+  }
+  ```
+  
+  ## Response - Item Not Found (404)
+  ```json
+  {
+    "message": "Item not found"
+  }
+  ```
+  
+  ## Response - No Embedding (400)
+  ```json
+  {
+    "message": "This item does not have an image embedding. Please upload an image first."
+  }
+  ```
+  
+  ## Notes
+  - Requires authentication
+  - Only returns FOUND items with status OPEN or PENDING_CLAIM
+  - Excludes the input item from results
+  - Requires the LOST item to have an image with generated embedding
+  - If no similar items found, returns empty array
+  - Uses cosine distance (<=>) for similarity ranking
+}

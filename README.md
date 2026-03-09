@@ -67,6 +67,9 @@ S3_REGION="us-east-1"
 S3_BUCKET_NAME="nyx-items"
 S3_ACCESS_KEY_ID="<from task garage:setup output>"
 S3_SECRET_ACCESS_KEY="<from task garage:setup output>"
+
+# HuggingFace (for image embeddings - optional)
+HUGGINGFACE_API_KEY="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ```
 
 ### 5. Run
@@ -95,10 +98,11 @@ task run    # Build and run
 |--------|----------|-------------|------|
 | GET | `/items/` | Get all items (with optional `?type=LOST\|FOUND`) | Yes |
 | GET | `/items/search?q=...` | Search items by title/description (optional `?type=LOST\|FOUND`) | Yes |
+| GET | `/items/similar/:id` | Get similar FOUND items by image embedding | User |
 | GET | `/items/:id` | Get item by ID | Yes |
 | GET | `/items/me` | Get current user's items | User |
 | POST | `/items/` | Create new item | User |
-| POST | `/items/:id/image` | Get pre-signed URL for image upload | User (Owner) |
+| POST | `/items/:id/image` | Get pre-signed URL for image upload (auto-generates embedding) | User (Owner) |
 | PATCH | `/items/:id` | Update item | User (Owner) |
 | PATCH | `/items/:id/status` | Update item status | User (Owner) |
 | DELETE | `/items/:id` | Soft delete item | User (Owner) |
@@ -172,9 +176,26 @@ Items support image uploads via **pre-signed URLs**:
 1. Client calls `POST /items/:id/image` with `{ "content_type": "image/png" }`
 2. Backend returns a pre-signed PUT URL (valid for 15 minutes)
 3. Client uploads the image directly to S3 using the URL
-4. The item's `image_url_original` is updated in the database
+4. Backend auto-generates CLIP image embedding in the background
+5. The item's `image_url_original` and `embedding` are updated in the database
 
 For production, swap the S3 env vars to point at Cloudflare R2 or Supabase Storage — no code changes needed.
+
+## Image Similarity Search
+
+Items with images can be searched for visual similarity using **CLIP embeddings**:
+
+1. User uploads an image for their LOST item
+2. Backend generates a 512-dimensional embedding using HuggingFace CLIP
+3. Other users can call `GET /items/similar/:id` to find visually similar FOUND items
+4. Results are ranked by cosine similarity (most similar first)
+
+This helps match lost items with found items based on visual appearance.
+
+**Requirements:**
+- Set `HUGGINGFACE_API_KEY` in environment variables
+- Get a free API key at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
+- The free tier includes ample requests for demo purposes
 
 ## Authors
 - Kiran Rajeev K V — [GitHub](https://github.com/KiranRajeev-KV)

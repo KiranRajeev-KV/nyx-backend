@@ -12,11 +12,13 @@ import (
 	"github.com/KiranRajeev-KV/nyx-backend/internal/logger"
 	"github.com/KiranRajeev-KV/nyx-backend/internal/models"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
+	"github.com/KiranRajeev-KV/nyx-backend/pkg/embedding"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/pgvector/pgvector-go"
 )
 
 func FetchItems(c *gin.Context) {
@@ -707,12 +709,132 @@ func UploadItemImage(c *gin.Context) {
 		return
 	}
 
+	// Build full image URL for embedding generation
+	imageURL := fmt.Sprintf("%s/%s/%s", cmd.Env.S3Endpoint, cmd.Env.S3BucketName, objectKey)
+
+	// Generate embedding asynchronously in background
+	go func() {
+		embeddingSvc := embedding.GetGlobalService()
+		if embeddingSvc == nil {
+			logger.Log.Warn("[ITEMS-WARN] Embedding service not configured, skipping image embedding")
+			return
+		}
+
+		// Give client time to upload the image to S3
+		time.Sleep(2 * time.Second)
+
+		embedCtx, embedCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer embedCancel()
+
+		vector, err := embeddingSvc.GetImageEmbedding(imageURL)
+		if err != nil {
+			logger.Log.Error("[ITEMS-ERROR] Failed to generate embedding", err)
+			return
+		}
+
+		// Convert []float64 to []float32 for pgvector
+		vectorFloat32 := make([]float32, len(vector))
+		for i, v := range vector {
+			vectorFloat32[i] = float32(v)
+		}
+
+		// Update item with embedding
+		embedConn, err := cmd.DBPool.Acquire(embedCtx)
+		if err != nil {
+			logger.Log.Error("[ITEMS-ERROR] Failed to acquire DB connection for embedding", err)
+			return
+		}
+		defer embedConn.Release()
+
+		pgVector := pgvector.NewVector(vectorFloat32)
+		_, err = q.UpdateItemEmbedding(embedCtx, embedConn, db.UpdateItemEmbeddingParams{
+			ID:        itemUUID,
+			Embedding: pgVector,
+		})
+		if err != nil {
+			logger.Log.Error("[ITEMS-ERROR] Failed to update item embedding", err)
+			return
+		}
+		logger.Log.Info("[ITEMS-INFO] Image embedding generated successfully")
+	}()
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Upload URL generated successfully",
 		"data": models.UploadItemImageResponse{
 			PresignedUrl: presignedUrl,
 			ObjectKey:    objectKey,
 		},
+	})
+	logger.Log.SuccessCtx(c)
+}
+
+func SimilarItems(c *gin.Context) {
+	id := c.Param("id")
+
+	itemUUID, exists := pkg.GrabUuid(c, id, "ITEMS", "itemId")
+	if !exists {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, err := cmd.DBPool.Acquire(ctx)
+	if pkg.HandleDbAcquireErr(c, err, "ITEMS") {
+		return
+	}
+	defer conn.Release()
+
+	q := db.New()
+
+	// Fetch the item to get its embedding
+	item, err := q.FetchItemByID(ctx, conn, itemUUID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+				"message": "Item not found",
+			})
+			return
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to fetch item by ID", err)
+		return
+	}
+
+	// Check if item has an embedding
+	if len(item.Embedding.Slice()) == 0 {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "This item does not have an image embedding. Please upload an image first.",
+		})
+		logger.Log.WarnCtx(c, "[ITEMS-WARN] Item has no embedding for similarity search")
+		return
+	}
+
+	// Get the embedding vector
+	embeddingVector := item.Embedding.Slice()
+
+	// Search for similar found items
+	similarItems, err := q.SearchSimilarFoundItems(ctx, conn, db.SearchSimilarFoundItemsParams{
+		Embedding: pgvector.NewVector(embeddingVector),
+		ID:        itemUUID,
+	})
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to search similar items", err)
+		return
+	}
+
+	if len(similarItems) == 0 {
+		similarItems = []db.SearchSimilarFoundItemsRow{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Similar items fetched successfully",
+		"data":    similarItems,
 	})
 	logger.Log.SuccessCtx(c)
 }
