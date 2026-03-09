@@ -25,12 +25,11 @@ type EnvConfig struct {
 	EmailFromPassword string `koanf:"EMAIL_FROM_PASSWORD"`
 	EmailFromName     string `koanf:"EMAIL_FROM_NAME"`
 
-	S3Endpoint         string `koanf:"S3_ENDPOINT"`
-	S3Region           string `koanf:"S3_REGION"`
-	S3BucketName       string `koanf:"S3_BUCKET_NAME"`
-	S3AccessKeyID      string `koanf:"S3_ACCESS_KEY_ID"`
-	S3SecretAccessKey  string `koanf:"S3_SECRET_ACCESS_KEY"`
-	S3InternalEndpoint string `koanf:"S3_INTERNAL_ENDPOINT"`
+	S3Endpoint        string `koanf:"S3_ENDPOINT"`
+	S3Region          string `koanf:"S3_REGION"`
+	S3BucketName      string `koanf:"S3_BUCKET_NAME"`
+	S3AccessKeyID     string `koanf:"S3_ACCESS_KEY_ID"`
+	S3SecretAccessKey string `koanf:"S3_SECRET_ACCESS_KEY"`
 
 	HuggingFaceAPIKey string `koanf:"HUGGINGFACE_API_KEY"`
 }

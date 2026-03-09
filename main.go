@@ -94,7 +94,7 @@ func StartServer() {
 	}
 
 	// Initialize S3 Storage
-	if err := storage.InitS3(cmd.Env.S3Endpoint, cmd.Env.S3Region, cmd.Env.S3BucketName, cmd.Env.S3AccessKeyID, cmd.Env.S3SecretAccessKey, cmd.Env.S3InternalEndpoint); err != nil {
+	if err := storage.InitS3(cmd.Env.S3Endpoint, cmd.Env.S3Region, cmd.Env.S3BucketName, cmd.Env.S3AccessKeyID, cmd.Env.S3SecretAccessKey); err != nil {
 		logger.Log.Error("[FATAL]: Could not initialize S3 storage: ", err)
 		return
 	}
