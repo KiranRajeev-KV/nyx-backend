@@ -15,7 +15,7 @@ This Bruno collection contains API tests for the hubs CRUD endpoints in the Nyx 
 ## 🚀 Quick Start
 
 ### 1. Setup Environment
-- Set `BASE_URL` to `http://localhost:8080/api/v1` in `nyx-env.bru`
+- Set `BASE_URL` to `http://localhost:8080/api/v2` in `nyx-env.bru`
 - Ensure the backend server is running: `task dev`
 - Ensure database is running: `task docker:up`
 

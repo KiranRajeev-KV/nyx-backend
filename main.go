@@ -118,14 +118,14 @@ func StartServer() {
 		logger.Log.SuccessCtx(c)
 	})
 
-	v1 := router.Group("/api/v1")
+	v2 := router.Group("/api/v2")
 
 	// Initialize auth routes with email service
 	apiAuth.InitAuthRoutes(emailService)
-	apiAuth.AuthRoutes(v1)
-	apiItems.ItemRoutes(v1)
-	apiHubs.HubRoutes(v1)
-	apiClaims.ClaimRoutes(v1)
+	apiAuth.AuthRoutes(v2)
+	apiItems.ItemRoutes(v2)
+	apiHubs.HubRoutes(v2)
+	apiClaims.ClaimRoutes(v2)
 
 	// === Server Setup ===
 

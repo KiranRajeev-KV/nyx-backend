@@ -13,7 +13,7 @@ This Bruno collection contains API tests for the claims management endpoints in 
 ## 🚀 Quick Start
 
 ### 1. Setup Environment
-- Set `BASE_URL` to `http://localhost:8080/api/v1` in environment files
+- Set `BASE_URL` to `http://localhost:8080/api/v2` in environment files
 - Ensure the backend server is running: `task dev`
 - Ensure database is running: `task docker:up`
 
