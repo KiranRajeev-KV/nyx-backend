@@ -1,0 +1,94 @@
+meta {
+  name: upload-item-image
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{BASE_URL}}/items/019bbcd3-d654-76bf-98dc-121f7487b2e1/image
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "content_type": "image/png"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  # Upload Item Image (Get Pre-signed URL)
+  This endpoint generates a pre-signed S3 PUT URL for uploading an image to a specific item. The client then uses the returned URL to upload the image directly to the S3-compatible storage (Garage/R2).
+  
+  ## Flow
+  1. Call this endpoint with the item ID and desired content type
+  2. Receive a pre-signed PUT URL and object key
+  3. Use the pre-signed URL to PUT the image file directly to S3
+  
+  ## Required Fields
+  - **content_type** (string): MIME type of the image. Must be one of:
+    - `image/jpeg`
+    - `image/png`
+    - `image/webp`
+  
+  ## Request Example
+  ```json
+  {
+    "content_type": "image/png"
+  }
+  ```
+  
+  ## Response Success (200)
+  ```json
+  {
+    "message": "Upload URL generated successfully",
+    "data": {
+      "presigned_url": "http://localhost:3900/nyx-items/items/019bbcd3-.../image_original_abc123.png?X-Amz-Algorithm=...",
+      "object_key": "items/019bbcd3-.../image_original_abc123.png"
+    }
+  }
+  ```
+  
+  ## Upload the Image (Step 2)
+  Use the returned `presigned_url` to upload the image via a PUT request:
+  ```bash
+  curl -X PUT "<presigned_url>" \
+    -H "Content-Type: image/png" \
+    --data-binary @./my-image.png
+  ```
+  
+  ## Response Not Found (404)
+  ```json
+  {
+    "message": "Item not found"
+  }
+  ```
+  
+  ## Response Forbidden (403)
+  ```json
+  {
+    "message": "You are not authorized to upload images for this item"
+  }
+  ```
+  
+  ## Response Validation Error (400)
+  ```json
+  {
+    "message": "Invalid request format for uploading item image",
+    "error": {
+      "content_type": "Only JPEG, PNG, and WebP images are supported"
+    }
+  }
+  ```
+  
+  ## Notes
+  - Only the item owner can upload images
+  - The pre-signed URL expires after 15 minutes
+  - The item's `image_url_original` is updated in the database immediately
+  - Replace the UUID in the URL with a valid item ID from `create-item.bru`
+}

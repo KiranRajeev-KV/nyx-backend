@@ -19,6 +19,7 @@ docs {
   | `create-item.bru` | Create new item (LOST or FOUND) | POST | Yes |
   | `fetch-item-by-id.bru` | Get item by ID | GET | No |
   | `fetch-all-items-by-user-id.bru` | Get current user's items | GET | Yes |
+  | `upload-item-image.bru` | Get pre-signed URL for image upload | POST | Yes (Owner only) |
   | `update-item-by-id.bru` | Update item details | PATCH | Yes (Owner only) |
   | `delete-item-by-id.bru` | Delete item (soft delete) | DELETE | Yes (Owner only) |
   | `update-item-status-by-id.bru` | Update item status | PATCH | Yes (Admin/Owner) |
@@ -89,6 +90,7 @@ docs {
   - `POST /items/` - Create items (requires authentication)
   - `GET /items/me` - View your own items
   - `PATCH /items/:id` - Update your own items
+  - `POST /items/:id/image` - Get pre-signed URL to upload image
   - `DELETE /items/:id` - Delete your own items
   
   ### Admin Endpoints

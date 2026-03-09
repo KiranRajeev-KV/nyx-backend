@@ -122,6 +122,7 @@ SELECT
     i.hub_id,
     i.name,
     i.image_url_redacted,
+    i.image_url_original,
     i.description,
     i.status,
     i.type,
@@ -180,6 +181,15 @@ RETURNING
     latitude,
     longitude,
     updated_at;
+
+-- name: UpdateItemImageOriginal :one
+UPDATE items
+SET
+    image_url_original = $3,
+    updated_at = NOW()
+WHERE id = $1
+  AND user_id = $2
+RETURNING id, image_url_original;
 
 -- name: SoftDeleteItemById :one
 UPDATE

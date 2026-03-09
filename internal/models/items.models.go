@@ -65,3 +65,20 @@ func (r UpdateItemStatusRequest) Validate() (errorMsg string, err error) {
 	)
 	return "Invalid request format for updating item status", err
 }
+
+type UploadItemImageRequest struct {
+	ContentType string `json:"content_type"`
+}
+
+func (r UploadItemImageRequest) Validate() (errorMsg string, err error) {
+	err = v.ValidateStruct(&r,
+		v.Field(&r.ContentType, v.Required.Error("Content-Type is required"), v.In("image/jpeg", "image/png", "image/webp").Error("Only JPEG, PNG, and WebP images are supported")),
+	)
+	return "Invalid request format for uploading item image", err
+}
+
+// UploadItemImageResponse is not validated since it is an outgoing response
+type UploadItemImageResponse struct {
+	PresignedUrl string `json:"presigned_url"`
+	ObjectKey    string `json:"object_key"`
+}

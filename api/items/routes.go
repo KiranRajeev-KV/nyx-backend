@@ -19,7 +19,7 @@ func ItemRoutes(router *gin.RouterGroup) {
 		items.GET("/me", mw.Auth, mw.CheckUserRole, FetchAllItemsByUserId)
 
 		// Update & delete — must be the owner
-		// TODO: items.POST("/:id/image", mw.Auth, mw.CheckUserRole, UploadItemImage) // to update the uploaded image_original
+		items.POST("/:id/image", mw.Auth, mw.CheckUserRole, UploadItemImage) // to get a presigned url for uploading image_original
 		items.PATCH("/:id", mw.Auth, mw.CheckUserRole, UpdateItemById)
 		items.PATCH("/:id/status", mw.Auth, mw.CheckUserRole, UpdateItemStatus)
 		items.DELETE("/:id", mw.Auth, mw.CheckUserRole, DeleteItemById)

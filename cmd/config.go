@@ -24,6 +24,12 @@ type EnvConfig struct {
 	EmailFromEmail    string `koanf:"EMAIL_FROM_EMAIL"`
 	EmailFromPassword string `koanf:"EMAIL_FROM_PASSWORD"`
 	EmailFromName     string `koanf:"EMAIL_FROM_NAME"`
+
+	S3Endpoint        string `koanf:"S3_ENDPOINT"`
+	S3Region          string `koanf:"S3_REGION"`
+	S3BucketName      string `koanf:"S3_BUCKET_NAME"`
+	S3AccessKeyID     string `koanf:"S3_ACCESS_KEY_ID"`
+	S3SecretAccessKey string `koanf:"S3_SECRET_ACCESS_KEY"`
 }
 
 var k = koanf.New(".")
@@ -84,5 +90,10 @@ func validateConfig(env *EnvConfig) error {
 			v.Min(1),
 			v.Max(65535),
 		),
+		v.Field(&env.S3Endpoint, v.Required),
+		v.Field(&env.S3Region, v.Required),
+		v.Field(&env.S3BucketName, v.Required),
+		v.Field(&env.S3AccessKeyID, v.Required),
+		v.Field(&env.S3SecretAccessKey, v.Required),
 	)
 }

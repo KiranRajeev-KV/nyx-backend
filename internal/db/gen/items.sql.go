@@ -174,6 +174,7 @@ SELECT
     i.hub_id,
     i.name,
     i.image_url_redacted,
+    i.image_url_original,
     i.description,
     i.status,
     i.type,
@@ -217,6 +218,7 @@ type FetchAllItemsByUserIdRow struct {
 	HubID               uuid.NullUUID      `json:"hub_id"`
 	Name                string             `json:"name"`
 	ImageUrlRedacted    pgtype.Text        `json:"image_url_redacted"`
+	ImageUrlOriginal    pgtype.Text        `json:"image_url_original"`
 	Description         pgtype.Text        `json:"description"`
 	Status              ItemStatus         `json:"status"`
 	Type                ItemType           `json:"type"`
@@ -246,6 +248,7 @@ func (q *Queries) FetchAllItemsByUserId(ctx context.Context, db DBTX, userID uui
 			&i.HubID,
 			&i.Name,
 			&i.ImageUrlRedacted,
+			&i.ImageUrlOriginal,
 			&i.Description,
 			&i.Status,
 			&i.Type,
@@ -526,6 +529,34 @@ func (q *Queries) UpdateItemById(ctx context.Context, db DBTX, arg UpdateItemByI
 		&i.Longitude,
 		&i.UpdatedAt,
 	)
+	return i, err
+}
+
+const updateItemImageOriginal = `-- name: UpdateItemImageOriginal :one
+UPDATE items
+SET
+    image_url_original = $3,
+    updated_at = NOW()
+WHERE id = $1
+  AND user_id = $2
+RETURNING id, image_url_original
+`
+
+type UpdateItemImageOriginalParams struct {
+	ID               uuid.UUID   `json:"id"`
+	UserID           uuid.UUID   `json:"user_id"`
+	ImageUrlOriginal pgtype.Text `json:"image_url_original"`
+}
+
+type UpdateItemImageOriginalRow struct {
+	ID               uuid.UUID   `json:"id"`
+	ImageUrlOriginal pgtype.Text `json:"image_url_original"`
+}
+
+func (q *Queries) UpdateItemImageOriginal(ctx context.Context, db DBTX, arg UpdateItemImageOriginalParams) (UpdateItemImageOriginalRow, error) {
+	row := db.QueryRow(ctx, updateItemImageOriginal, arg.ID, arg.UserID, arg.ImageUrlOriginal)
+	var i UpdateItemImageOriginalRow
+	err := row.Scan(&i.ID, &i.ImageUrlOriginal)
 	return i, err
 }
 
