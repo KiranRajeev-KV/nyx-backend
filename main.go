@@ -16,6 +16,7 @@ import (
 	mw "github.com/KiranRajeev-KV/nyx-backend/internal/middleware"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg/embedding"
+	"github.com/KiranRajeev-KV/nyx-backend/pkg/storage"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
@@ -91,6 +92,13 @@ func StartServer() {
 	} else {
 		logger.Log.Warn("[WARN]: HuggingFace API key not configured - image embeddings disabled")
 	}
+
+	// Initialize S3 Storage
+	if err := storage.InitS3(cmd.Env.S3Endpoint, cmd.Env.S3Region, cmd.Env.S3BucketName, cmd.Env.S3AccessKeyID, cmd.Env.S3SecretAccessKey); err != nil {
+		logger.Log.Error("[FATAL]: Could not initialize S3 storage: ", err)
+		return
+	}
+	logger.Log.Info("[OK]: S3 storage initialized successfully")
 
 	// === Router Setup ===
 
