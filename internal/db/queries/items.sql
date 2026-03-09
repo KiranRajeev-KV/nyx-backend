@@ -76,6 +76,7 @@ SELECT
     i.hub_id,
     i.name,
     i.image_url_redacted,
+    i.image_url_original,
     i.description,
     i.status,
     i.type,

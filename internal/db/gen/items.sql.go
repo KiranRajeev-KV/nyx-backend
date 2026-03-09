@@ -280,6 +280,7 @@ SELECT
     i.hub_id,
     i.name,
     i.image_url_redacted,
+    i.image_url_original,
     i.description,
     i.status,
     i.type,
@@ -326,6 +327,7 @@ type FetchItemByIDRow struct {
 	HubID               uuid.NullUUID      `json:"hub_id"`
 	Name                string             `json:"name"`
 	ImageUrlRedacted    pgtype.Text        `json:"image_url_redacted"`
+	ImageUrlOriginal    pgtype.Text        `json:"image_url_original"`
 	Description         pgtype.Text        `json:"description"`
 	Status              ItemStatus         `json:"status"`
 	Type                ItemType           `json:"type"`
@@ -349,6 +351,7 @@ func (q *Queries) FetchItemByID(ctx context.Context, db DBTX, id uuid.UUID) (Fet
 		&i.HubID,
 		&i.Name,
 		&i.ImageUrlRedacted,
+		&i.ImageUrlOriginal,
 		&i.Description,
 		&i.Status,
 		&i.Type,

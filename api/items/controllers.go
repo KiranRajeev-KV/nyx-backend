@@ -279,25 +279,31 @@ func FetchItemById(c *gin.Context) {
 		}
 	}
 
+	response := gin.H{
+		"id":                   item.ID,
+		"is_anonymous":         item.IsAnonymous,
+		"name":                 item.Name,
+		"image_url_redacted":   item.ImageUrlRedacted,
+		"description":          item.Description,
+		"status":               item.Status,
+		"type":                 item.Type,
+		"location_description": item.LocationDescription,
+		"time_at":              item.TimeAt,
+		"latitude":             item.Latitude,
+		"longitude":            item.Longitude,
+		"created_at":           item.CreatedAt,
+		"updated_at":           item.UpdatedAt,
+		"user":                 userObj,
+		"hub":                  hubObj,
+	}
+
+	if item.ImageUrlOriginal.Valid && item.ImageUrlOriginal.String != "" {
+		response["image_url_original"] = storage.S3.GetPublicURL(item.ImageUrlOriginal.String)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Item fetched successfully",
-		"data": gin.H{
-			"id":                   item.ID,
-			"is_anonymous":         item.IsAnonymous,
-			"name":                 item.Name,
-			"image_url_redacted":   item.ImageUrlRedacted,
-			"description":          item.Description,
-			"status":               item.Status,
-			"type":                 item.Type,
-			"location_description": item.LocationDescription,
-			"time_at":              item.TimeAt,
-			"latitude":             item.Latitude,
-			"longitude":            item.Longitude,
-			"created_at":           item.CreatedAt,
-			"updated_at":           item.UpdatedAt,
-			"user":                 userObj,
-			"hub":                  hubObj,
-		},
+		"data":    response,
 	})
 	logger.Log.SuccessCtx(c)
 }
