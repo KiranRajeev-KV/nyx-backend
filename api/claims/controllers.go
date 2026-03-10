@@ -162,10 +162,18 @@ func CreateClaim(c *gin.Context) {
 		return
 	}
 
-	// Similarity score is calculated when embeddings are available (populated from ai_desc)
-	// For now, set to null since embeddings are not populated yet
+	// Calculate similarity score between found and lost item embeddings
+	foundEmbedding, err := q.GetItemEmbedding(ctx, conn, foundItemUUID)
+	lostEmbedding, err2 := q.GetItemEmbedding(ctx, conn, lostItemUUID)
+
 	var similarityScore pgtype.Float8
-	similarityScore = pgtype.Float8{Valid: false}
+	if err == nil && err2 == nil && len(foundEmbedding) > 0 && len(lostEmbedding) > 0 {
+		similarity := cosineSimilarity(foundEmbedding, lostEmbedding)
+		similarityScore = pgtype.Float8{Float64: similarity, Valid: true}
+	} else {
+		// If either item doesn't have an embedding, set to 0
+		similarityScore = pgtype.Float8{Float64: 0, Valid: true}
+	}
 
 	// All validations passed, create claim in transaction
 	tx, err := cmd.DBPool.Begin(ctx)
@@ -624,4 +632,26 @@ func UploadClaimProofImage(c *gin.Context) {
 		},
 	})
 	logger.Log.SuccessCtx(c)
+}
+
+func cosineSimilarity(a, b []float32) float64 {
+	if len(a) != len(b) || len(a) == 0 {
+		return 0
+	}
+
+	var dotProduct float64
+	var normA float64
+	var normB float64
+
+	for i := 0; i < len(a); i++ {
+		dotProduct += float64(a[i]) * float64(b[i])
+		normA += float64(a[i]) * float64(a[i])
+		normB += float64(b[i]) * float64(b[i])
+	}
+
+	if normA == 0 || normB == 0 {
+		return 0
+	}
+
+	return dotProduct / (normA * normB)
 }

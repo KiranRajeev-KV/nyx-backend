@@ -382,6 +382,17 @@ func (q *Queries) GetItemByID(ctx context.Context, db DBTX, id uuid.UUID) (GetIt
 	return i, err
 }
 
+const getItemEmbedding = `-- name: GetItemEmbedding :one
+SELECT embedding::float4[] as embedding FROM items WHERE id = $1
+`
+
+func (q *Queries) GetItemEmbedding(ctx context.Context, db DBTX, id uuid.UUID) ([]float32, error) {
+	row := db.QueryRow(ctx, getItemEmbedding, id)
+	var embedding []float32
+	err := row.Scan(&embedding)
+	return embedding, err
+}
+
 const getPendingClaimsCount = `-- name: GetPendingClaimsCount :one
 SELECT COUNT(*) as count
 FROM claims 

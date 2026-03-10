@@ -113,6 +113,9 @@ SELECT id, user_id, type, status
 FROM items 
 WHERE id = $1;
 
+-- name: GetItemEmbedding :one
+SELECT embedding::float4[] as embedding FROM items WHERE id = $1;
+
 -- name: UpdateItemStatus :one
 UPDATE items 
 SET status = $2, updated_at = NOW()
