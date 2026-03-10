@@ -50,7 +50,7 @@ func NewDescriber(apiKey string) *Describer {
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		model: "qwen/qwen2.5-vl-7b-instruct",
+		model: "qwen/qwen-2.5-vl-7b-instruct",
 	}
 }
 
