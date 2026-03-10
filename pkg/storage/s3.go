@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -60,7 +59,7 @@ func InitS3(endpoint, region, bucket, accessKey, secretKey string) error {
 		secretKey:     secretKey,
 	}
 
-	log.Println("[OK]: S3 Service initialized successfully")
+	// log.Println("[OK]: S3 Service initialized successfully")
 	return nil
 }
 

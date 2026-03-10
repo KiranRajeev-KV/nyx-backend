@@ -171,6 +171,11 @@ tasks:
     cmds:
       - watchexec -e sql,yaml -- go-task gen
 
+  download:models:
+    desc: "Download CLIP ONNX models for local image embeddings"
+    cmds:
+      - bash scripts/download_clip_onnx.sh
+
   # ===== Testing =====
   test:
     desc: "Run all tests"

@@ -63,6 +63,10 @@ func Auth(c *gin.Context) {
 			return
 		}
 		pkg.SetAuthCookie(c, authToken)
+
+		c.Set("userId", userId)
+		c.Set("email", email)
+		c.Set("role", string(role))
 	}
 
 	c.Next()

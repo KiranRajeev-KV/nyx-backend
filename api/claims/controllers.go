@@ -220,6 +220,16 @@ func CreateClaim(c *gin.Context) {
 		return
 	}
 
+	err = q.CreateAuditLog(ctx, tx, db.CreateAuditLogParams{
+		ActorID:    uuid.NullUUID{UUID: userUUID, Valid: true},
+		Action:     "CLAIM_CREATED",
+		TargetType: "CLAIM",
+		TargetID:   uuid.NullUUID{UUID: newClaim.ID, Valid: true},
+	})
+	if err != nil {
+		logger.Log.ErrorCtx(c, "[CLAIMS-ERROR] Failed to create audit log", err)
+	}
+
 	err = tx.Commit(ctx)
 	if pkg.HandleDbTxnCommitErr(c, err, "CLAIMS") {
 		return
@@ -506,6 +516,23 @@ func ProcessClaim(c *gin.Context) {
 			logger.Log.ErrorCtx(c, "[CLAIMS-ERROR] Failed to update item status after rejection", err)
 			return
 		}
+	}
+
+	var auditAction string
+	if claimStatus == db.ClaimStatusAPPROVED {
+		auditAction = "CLAIM_APPROVED"
+	} else {
+		auditAction = "CLAIM_REJECTED"
+	}
+
+	err = q.CreateAuditLog(ctx, tx, db.CreateAuditLogParams{
+		ActorID:    uuid.NullUUID{UUID: adminUserUUID, Valid: true},
+		Action:     auditAction,
+		TargetType: "CLAIM",
+		TargetID:   uuid.NullUUID{UUID: claimUUID, Valid: true},
+	})
+	if err != nil {
+		logger.Log.ErrorCtx(c, "[CLAIMS-ERROR] Failed to create audit log", err)
 	}
 
 	err = tx.Commit(ctx)

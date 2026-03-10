@@ -224,6 +224,16 @@ func CreateItem(c *gin.Context) {
 		return
 	}
 
+	err = q.CreateAuditLog(ctx, conn, db.CreateAuditLogParams{
+		ActorID:    uuid.NullUUID{UUID: userUUID, Valid: true},
+		Action:     "ITEM_CREATED",
+		TargetType: "ITEM",
+		TargetID:   uuid.NullUUID{UUID: newItem.ID, Valid: true},
+	})
+	if err != nil {
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to create audit log", err)
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Item created successfully",
 		"data":    newItem,
@@ -489,6 +499,16 @@ func UpdateItemById(c *gin.Context) {
 		return
 	}
 
+	err = q.CreateAuditLog(ctx, conn, db.CreateAuditLogParams{
+		ActorID:    uuid.NullUUID{UUID: userUUID, Valid: true},
+		Action:     "ITEM_UPDATED",
+		TargetType: "ITEM",
+		TargetID:   uuid.NullUUID{UUID: itemUUID, Valid: true},
+	})
+	if err != nil {
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to create audit log", err)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Item updated successfully",
 		"data":    updatedItem,
@@ -543,6 +563,16 @@ func DeleteItemById(c *gin.Context) {
 		return
 	}
 
+	err = q.CreateAuditLog(ctx, conn, db.CreateAuditLogParams{
+		ActorID:    uuid.NullUUID{UUID: userUUID, Valid: true},
+		Action:     "ITEM_DELETED",
+		TargetType: "ITEM",
+		TargetID:   uuid.NullUUID{UUID: itemUUID, Valid: true},
+	})
+	if err != nil {
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to create audit log", err)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Item deleted successfully",
 	})
@@ -553,6 +583,16 @@ func UpdateItemStatus(c *gin.Context) {
 	id := c.Param("id")
 
 	itemUUID, exists := pkg.GrabUuid(c, id, "ITEMS", "itemId")
+	if !exists {
+		return
+	}
+
+	userId, ok := pkg.GrabUserId(c, "ITEMS")
+	if !ok {
+		return
+	}
+
+	userUUID, exists := pkg.GrabUuid(c, userId, "ITEMS", "userId")
 	if !exists {
 		return
 	}
@@ -589,6 +629,16 @@ func UpdateItemStatus(c *gin.Context) {
 		})
 		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to update item status in DB", err)
 		return
+	}
+
+	err = q.CreateAuditLog(ctx, conn, db.CreateAuditLogParams{
+		ActorID:    uuid.NullUUID{UUID: userUUID, Valid: true},
+		Action:     "ITEM_STATUS_CHANGED",
+		TargetType: "ITEM",
+		TargetID:   uuid.NullUUID{UUID: itemUUID, Valid: true},
+	})
+	if err != nil {
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to create audit log", err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -775,6 +825,14 @@ func UploadItemImage(c *gin.Context) {
 }
 
 func SimilarItems(c *gin.Context) {
+	// Check if embedding service is available
+	if !embedding.IsServiceAvailable() {
+		c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+			"message": "Service temporarily unavailable due to rate limits. Please try again later.",
+		})
+		return
+	}
+
 	id := c.Param("id")
 
 	itemUUID, exists := pkg.GrabUuid(c, id, "ITEMS", "itemId")

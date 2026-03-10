@@ -21,6 +21,16 @@ func CreateHub(c *gin.Context) {
 		return
 	}
 
+	userId, ok := pkg.GrabUserId(c, "HUB")
+	if !ok {
+		return
+	}
+
+	userUUID, exists := pkg.GrabUuid(c, userId, "HUB", "userId")
+	if !exists {
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -45,6 +55,16 @@ func CreateHub(c *gin.Context) {
 		})
 		logger.Log.ErrorCtx(c, "[HUB-CREATE-ERROR]: Failed to create hub in DB", err)
 		return
+	}
+
+	err = q.CreateAuditLog(ctx, tx, db.CreateAuditLogParams{
+		ActorID:    uuid.NullUUID{UUID: userUUID, Valid: true},
+		Action:     "HUB_CREATED",
+		TargetType: "HUB",
+		TargetID:   uuid.NullUUID{UUID: hub.ID, Valid: true},
+	})
+	if err != nil {
+		logger.Log.ErrorCtx(c, "[HUB-CREATE-ERROR] Failed to create audit log", err)
 	}
 
 	err = tx.Commit(ctx)
@@ -136,6 +156,16 @@ func UpdateHub(c *gin.Context) {
 		return
 	}
 
+	userId, ok := pkg.GrabUserId(c, "HUB")
+	if !ok {
+		return
+	}
+
+	userUUID, exists := pkg.GrabUuid(c, userId, "HUB", "userId")
+	if !exists {
+		return
+	}
+
 	req, ok := pkg.ValidateRequest[models.UpdateHubRequest](c)
 	if !ok {
 		return
@@ -190,6 +220,16 @@ func UpdateHub(c *gin.Context) {
 		return
 	}
 
+	err = q.CreateAuditLog(ctx, tx, db.CreateAuditLogParams{
+		ActorID:    uuid.NullUUID{UUID: userUUID, Valid: true},
+		Action:     "HUB_UPDATED",
+		TargetType: "HUB",
+		TargetID:   uuid.NullUUID{UUID: hubId, Valid: true},
+	})
+	if err != nil {
+		logger.Log.ErrorCtx(c, "[HUB-UPDATE-ERROR] Failed to create audit log", err)
+	}
+
 	err = tx.Commit(ctx)
 	if pkg.HandleDbTxnCommitErr(c, err, "HUB-UPDATE") {
 		return
@@ -206,6 +246,16 @@ func DeleteHub(c *gin.Context) {
 	id := c.Param("id")
 	hubId, ok := pkg.GrabUuid(c, id, "HUB-DELETE", "id")
 	if !ok {
+		return
+	}
+
+	userId, ok := pkg.GrabUserId(c, "HUB")
+	if !ok {
+		return
+	}
+
+	userUUID, exists := pkg.GrabUuid(c, userId, "HUB", "userId")
+	if !exists {
 		return
 	}
 
@@ -246,6 +296,16 @@ func DeleteHub(c *gin.Context) {
 		})
 		logger.Log.ErrorCtx(c, "[HUB-DELETE-ERROR]: Failed to delete hub from DB", err)
 		return
+	}
+
+	err = q.CreateAuditLog(ctx, tx, db.CreateAuditLogParams{
+		ActorID:    uuid.NullUUID{UUID: userUUID, Valid: true},
+		Action:     "HUB_DELETED",
+		TargetType: "HUB",
+		TargetID:   uuid.NullUUID{UUID: hubId, Valid: true},
+	})
+	if err != nil {
+		logger.Log.ErrorCtx(c, "[HUB-DELETE-ERROR] Failed to create audit log", err)
 	}
 
 	err = tx.Commit(ctx)

@@ -20,6 +20,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
+	apiAudit "github.com/KiranRajeev-KV/nyx-backend/api/audit"
 	apiAuth "github.com/KiranRajeev-KV/nyx-backend/api/auth"
 	apiClaims "github.com/KiranRajeev-KV/nyx-backend/api/claims"
 	apiHubs "github.com/KiranRajeev-KV/nyx-backend/api/hubs"
@@ -83,14 +84,14 @@ func StartServer() {
 		logger.Log.Info("[INFO]: Email service is disabled")
 	}
 
-	// Initialize Embedding Service
-	var embeddingSvc *embedding.EmbeddingService
-	if cmd.Env.HuggingFaceAPIKey != "" {
-		embeddingSvc = embedding.NewEmbeddingService(cmd.Env.HuggingFaceAPIKey)
+	// Initialize Embedding Service (Local ONNX)
+	embeddingSvc, err := embedding.NewEmbeddingService("models/clip")
+	if err == nil {
 		embedding.SetGlobalService(embeddingSvc)
-		logger.Log.Info("[OK]: Embedding service initialized successfully")
+		logger.Log.Info("[OK]: Embedding service (ONNX) initialized successfully")
 	} else {
-		logger.Log.Warn("[WARN]: HuggingFace API key not configured - image embeddings disabled")
+		logger.Log.Warn("[WARN]: No embedding service available - image similarity disabled")
+		logger.Log.Warn("[WARN] Reason: " + err.Error())
 	}
 
 	// Initialize S3 Storage
@@ -131,6 +132,7 @@ func StartServer() {
 	// Initialize auth routes with email service
 	apiAuth.InitAuthRoutes(emailService)
 	apiAuth.AuthRoutes(v2)
+	apiAudit.AuditRoutes(v2)
 	apiItems.ItemRoutes(v2)
 	apiHubs.HubRoutes(v2)
 	apiClaims.ClaimRoutes(v2)
