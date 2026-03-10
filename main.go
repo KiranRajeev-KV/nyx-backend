@@ -15,7 +15,6 @@ import (
 	"github.com/KiranRajeev-KV/nyx-backend/internal/logger"
 	mw "github.com/KiranRajeev-KV/nyx-backend/internal/middleware"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
-	"github.com/KiranRajeev-KV/nyx-backend/pkg/embedding"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg/storage"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -82,16 +81,6 @@ func StartServer() {
 		logger.Log.Info("[OK]: Email service initialized successfully")
 	} else {
 		logger.Log.Info("[INFO]: Email service is disabled")
-	}
-
-	// Initialize Embedding Service (Local ONNX)
-	embeddingSvc, err := embedding.NewEmbeddingService("models/clip")
-	if err == nil {
-		embedding.SetGlobalService(embeddingSvc)
-		logger.Log.Info("[OK]: Embedding service (ONNX) initialized successfully")
-	} else {
-		logger.Log.Warn("[WARN]: No embedding service available - image similarity disabled")
-		logger.Log.Warn("[WARN] Reason: " + err.Error())
 	}
 
 	// Initialize S3 Storage
