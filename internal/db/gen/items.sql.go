@@ -514,7 +514,7 @@ FROM
     items
 WHERE
     type = 'FOUND'
-    AND status IN ('OPEN', 'PENDING_CLAIM')
+    AND status = 'OPEN'
     AND embedding IS NOT NULL
     AND id != $2
 ORDER BY

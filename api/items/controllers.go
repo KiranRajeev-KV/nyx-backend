@@ -893,3 +893,54 @@ func GenerateAIDesc(c *gin.Context) {
 	})
 	logger.Log.SuccessCtx(c)
 }
+
+func FindSimilarItems(c *gin.Context) {
+	id := c.Param("id")
+
+	itemUUID, exists := pkg.GrabUuid(c, id, "ITEMS", "itemId")
+	if !exists {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, err := cmd.DBPool.Acquire(ctx)
+	if pkg.HandleDbAcquireErr(c, err, "ITEMS") {
+		return
+	}
+	defer conn.Release()
+
+	q := db.New()
+
+	embeddingVals, err := q.FetchItemEmbedding(ctx, conn, itemUUID)
+	if err != nil || len(embeddingVals) == 0 {
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+			"message": "Item not found or has no embedding",
+		})
+		if err != nil {
+			logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to fetch item embedding", err)
+		}
+		return
+	}
+
+	embedding := pgvector.NewVector(embeddingVals)
+
+	items, err := q.SearchSimilarFoundItems(ctx, conn, db.SearchSimilarFoundItemsParams{
+		Embedding: embedding,
+		ID:        itemUUID,
+	})
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to search similar items", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Similar items found",
+		"data":    items,
+	})
+	logger.Log.SuccessCtx(c)
+}
