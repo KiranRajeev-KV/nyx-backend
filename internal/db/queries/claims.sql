@@ -109,7 +109,7 @@ FROM claims
 WHERE item_id = $1 AND status = 'PENDING';
 
 -- name: GetItemByID :one
-SELECT id, user_id, type, status, embedding
+SELECT id, user_id, type, status, COALESCE(embedding, array_fill(0, ARRAY[512])::vector) AS embedding
 FROM items 
 WHERE id = $1;
 
