@@ -113,7 +113,7 @@ SELECT
     id,
     name,
     description,
-    image_url_redacted,
+    image_url_original,
     status,
     type,
     created_at,
@@ -131,7 +131,7 @@ type FetchAllItemsRow struct {
 	ID               uuid.UUID          `json:"id"`
 	Name             string             `json:"name"`
 	Description      pgtype.Text        `json:"description"`
-	ImageUrlRedacted pgtype.Text        `json:"image_url_redacted"`
+	ImageUrlOriginal pgtype.Text        `json:"image_url_original"`
 	Status           ItemStatus         `json:"status"`
 	Type             ItemType           `json:"type"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
@@ -151,7 +151,7 @@ func (q *Queries) FetchAllItems(ctx context.Context, db DBTX) ([]FetchAllItemsRo
 			&i.ID,
 			&i.Name,
 			&i.Description,
-			&i.ImageUrlRedacted,
+			&i.ImageUrlOriginal,
 			&i.Status,
 			&i.Type,
 			&i.CreatedAt,
@@ -174,7 +174,6 @@ SELECT
     i.is_anonymous,
     i.hub_id,
     i.name,
-    i.image_url_redacted,
     i.image_url_original,
     i.description,
     i.status,
@@ -218,7 +217,6 @@ type FetchAllItemsByUserIdRow struct {
 	IsAnonymous         bool               `json:"is_anonymous"`
 	HubID               uuid.NullUUID      `json:"hub_id"`
 	Name                string             `json:"name"`
-	ImageUrlRedacted    pgtype.Text        `json:"image_url_redacted"`
 	ImageUrlOriginal    pgtype.Text        `json:"image_url_original"`
 	Description         pgtype.Text        `json:"description"`
 	Status              ItemStatus         `json:"status"`
@@ -248,7 +246,6 @@ func (q *Queries) FetchAllItemsByUserId(ctx context.Context, db DBTX, userID uui
 			&i.IsAnonymous,
 			&i.HubID,
 			&i.Name,
-			&i.ImageUrlRedacted,
 			&i.ImageUrlOriginal,
 			&i.Description,
 			&i.Status,
@@ -279,7 +276,6 @@ SELECT
     i.is_anonymous,
     i.hub_id,
     i.name,
-    i.image_url_redacted,
     i.image_url_original,
     i.ai_desc,
     i.description,
@@ -327,7 +323,6 @@ type FetchItemByIDRow struct {
 	IsAnonymous         bool               `json:"is_anonymous"`
 	HubID               uuid.NullUUID      `json:"hub_id"`
 	Name                string             `json:"name"`
-	ImageUrlRedacted    pgtype.Text        `json:"image_url_redacted"`
 	ImageUrlOriginal    pgtype.Text        `json:"image_url_original"`
 	AiDesc              pgtype.Text        `json:"ai_desc"`
 	Description         pgtype.Text        `json:"description"`
@@ -352,7 +347,6 @@ func (q *Queries) FetchItemByID(ctx context.Context, db DBTX, id uuid.UUID) (Fet
 		&i.IsAnonymous,
 		&i.HubID,
 		&i.Name,
-		&i.ImageUrlRedacted,
 		&i.ImageUrlOriginal,
 		&i.AiDesc,
 		&i.Description,
@@ -386,7 +380,7 @@ SELECT
     id,
     name,
     description,
-    image_url_redacted,
+    image_url_original,
     status,
     type,
     created_at,
@@ -405,7 +399,7 @@ type FetchItemsByTypeRow struct {
 	ID               uuid.UUID          `json:"id"`
 	Name             string             `json:"name"`
 	Description      pgtype.Text        `json:"description"`
-	ImageUrlRedacted pgtype.Text        `json:"image_url_redacted"`
+	ImageUrlOriginal pgtype.Text        `json:"image_url_original"`
 	Status           ItemStatus         `json:"status"`
 	Type             ItemType           `json:"type"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
@@ -425,7 +419,7 @@ func (q *Queries) FetchItemsByType(ctx context.Context, db DBTX, type_ ItemType)
 			&i.ID,
 			&i.Name,
 			&i.Description,
-			&i.ImageUrlRedacted,
+			&i.ImageUrlOriginal,
 			&i.Status,
 			&i.Type,
 			&i.CreatedAt,
@@ -446,7 +440,7 @@ SELECT
     id,
     name,
     description,
-    image_url_redacted,
+    image_url_original,
     status,
     type,
     created_at,
@@ -464,7 +458,7 @@ type SearchItemsRow struct {
 	ID               uuid.UUID          `json:"id"`
 	Name             string             `json:"name"`
 	Description      pgtype.Text        `json:"description"`
-	ImageUrlRedacted pgtype.Text        `json:"image_url_redacted"`
+	ImageUrlOriginal pgtype.Text        `json:"image_url_original"`
 	Status           ItemStatus         `json:"status"`
 	Type             ItemType           `json:"type"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
@@ -484,7 +478,7 @@ func (q *Queries) SearchItems(ctx context.Context, db DBTX, plaintoTsquery strin
 			&i.ID,
 			&i.Name,
 			&i.Description,
-			&i.ImageUrlRedacted,
+			&i.ImageUrlOriginal,
 			&i.Status,
 			&i.Type,
 			&i.CreatedAt,
@@ -505,7 +499,7 @@ SELECT
     id,
     name,
     description,
-    image_url_redacted,
+    image_url_original,
     status,
     type,
     created_at,
@@ -531,7 +525,7 @@ type SearchSimilarFoundItemsRow struct {
 	ID               uuid.UUID          `json:"id"`
 	Name             string             `json:"name"`
 	Description      pgtype.Text        `json:"description"`
-	ImageUrlRedacted pgtype.Text        `json:"image_url_redacted"`
+	ImageUrlOriginal pgtype.Text        `json:"image_url_original"`
 	Status           ItemStatus         `json:"status"`
 	Type             ItemType           `json:"type"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
@@ -551,7 +545,7 @@ func (q *Queries) SearchSimilarFoundItems(ctx context.Context, db DBTX, arg Sear
 			&i.ID,
 			&i.Name,
 			&i.Description,
-			&i.ImageUrlRedacted,
+			&i.ImageUrlOriginal,
 			&i.Status,
 			&i.Type,
 			&i.CreatedAt,

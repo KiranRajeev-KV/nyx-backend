@@ -272,7 +272,6 @@ type Item struct {
 	HubID               uuid.NullUUID      `json:"hub_id"`
 	Name                string             `json:"name"`
 	ImageUrlOriginal    pgtype.Text        `json:"image_url_original"`
-	ImageUrlRedacted    pgtype.Text        `json:"image_url_redacted"`
 	Embedding           pgvector.Vector    `json:"embedding"`
 	Description         pgtype.Text        `json:"description"`
 	Status              ItemStatus         `json:"status"`

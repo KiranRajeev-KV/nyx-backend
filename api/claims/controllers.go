@@ -274,9 +274,30 @@ func FetchUserClaims(c *gin.Context) {
 		claims = []db.FetchClaimsByUserRow{}
 	}
 
+	response := make([]gin.H, len(claims))
+	for i, claim := range claims {
+		response[i] = gin.H{
+			"id":              claim.ID,
+			"item_id":         claim.ItemID,
+			"claimant_id":     claim.ClaimantID,
+			"status":          claim.Status,
+			"proof_text":      claim.ProofText,
+			"proof_image_url": claim.ProofImageUrl.String,
+			"admin_notes":     claim.AdminNotes,
+			"created_at":      claim.CreatedAt,
+			"updated_at":      claim.UpdatedAt,
+			"item_name":       claim.ItemName,
+			"item_type":       claim.ItemType,
+			"item_status":     claim.ItemStatus,
+		}
+		if claim.ProofImageUrl.Valid && claim.ProofImageUrl.String != "" {
+			response[i]["proof_image_url"] = storage.S3.GetPublicURL(claim.ProofImageUrl.String)
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "User claims fetched successfully",
-		"data":    claims,
+		"data":    response,
 	})
 	logger.Log.SuccessCtx(c)
 }
@@ -313,9 +334,29 @@ func FetchClaimsByItem(c *gin.Context) {
 		claims = []db.FetchClaimsByItemRow{}
 	}
 
+	response := make([]gin.H, len(claims))
+	for i, claim := range claims {
+		response[i] = gin.H{
+			"id":              claim.ID,
+			"item_id":         claim.ItemID,
+			"claimant_id":     claim.ClaimantID,
+			"status":          claim.Status,
+			"proof_text":      claim.ProofText,
+			"proof_image_url": claim.ProofImageUrl.String,
+			"admin_notes":     claim.AdminNotes,
+			"created_at":      claim.CreatedAt,
+			"updated_at":      claim.UpdatedAt,
+			"claimant_name":   claim.ClaimantName,
+			"claimant_email":  claim.ClaimantEmail,
+		}
+		if claim.ProofImageUrl.Valid && claim.ProofImageUrl.String != "" {
+			response[i]["proof_image_url"] = storage.S3.GetPublicURL(claim.ProofImageUrl.String)
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Claims for item fetched successfully",
-		"data":    claims,
+		"data":    response,
 	})
 	logger.Log.SuccessCtx(c)
 }
@@ -345,9 +386,32 @@ func FetchAllClaims(c *gin.Context) {
 		claims = []db.FetchAllClaimsRow{}
 	}
 
+	response := make([]gin.H, len(claims))
+	for i, claim := range claims {
+		response[i] = gin.H{
+			"id":              claim.ID,
+			"item_id":         claim.ItemID,
+			"claimant_id":     claim.ClaimantID,
+			"status":          claim.Status,
+			"proof_text":      claim.ProofText,
+			"proof_image_url": claim.ProofImageUrl.String,
+			"admin_notes":     claim.AdminNotes,
+			"created_at":      claim.CreatedAt,
+			"updated_at":      claim.UpdatedAt,
+			"item_name":       claim.ItemName,
+			"item_type":       claim.ItemType,
+			"item_status":     claim.ItemStatus,
+			"claimant_name":   claim.ClaimantName,
+			"claimant_email":  claim.ClaimantEmail,
+		}
+		if claim.ProofImageUrl.Valid && claim.ProofImageUrl.String != "" {
+			response[i]["proof_image_url"] = storage.S3.GetPublicURL(claim.ProofImageUrl.String)
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "All claims fetched successfully",
-		"data":    claims,
+		"data":    response,
 	})
 	logger.Log.SuccessCtx(c)
 }

@@ -81,9 +81,26 @@ func FetchItems(c *gin.Context) {
 		items = []db.FetchItemsByTypeRow{}
 	}
 
+	response := make([]gin.H, len(items))
+	for i, item := range items {
+		response[i] = gin.H{
+			"id":                 item.ID,
+			"name":               item.Name,
+			"image_url_original": item.ImageUrlOriginal.String,
+			"description":        item.Description,
+			"status":             item.Status,
+			"type":               item.Type,
+			"created_at":         item.CreatedAt,
+			"updated_at":         item.UpdatedAt,
+		}
+		if item.ImageUrlOriginal.Valid && item.ImageUrlOriginal.String != "" {
+			response[i]["image_url_original"] = storage.S3.GetPublicURL(item.ImageUrlOriginal.String)
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Items fetched successfully",
-		"data":    items,
+		"data":    response,
 	})
 	logger.Log.SuccessCtx(c)
 }
@@ -139,9 +156,26 @@ func SearchItems(c *gin.Context) {
 		items = []db.SearchItemsRow{}
 	}
 
+	response := make([]gin.H, len(items))
+	for i, item := range items {
+		response[i] = gin.H{
+			"id":                 item.ID,
+			"name":               item.Name,
+			"description":        item.Description,
+			"image_url_original": item.ImageUrlOriginal.String,
+			"status":             item.Status,
+			"type":               item.Type,
+			"created_at":         item.CreatedAt,
+			"updated_at":         item.UpdatedAt,
+		}
+		if item.ImageUrlOriginal.Valid && item.ImageUrlOriginal.String != "" {
+			response[i]["image_url_original"] = storage.S3.GetPublicURL(item.ImageUrlOriginal.String)
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Search completed successfully",
-		"data":    items,
+		"data":    response,
 	})
 	logger.Log.SuccessCtx(c)
 }
@@ -293,7 +327,6 @@ func FetchItemById(c *gin.Context) {
 		"id":                   item.ID,
 		"is_anonymous":         item.IsAnonymous,
 		"name":                 item.Name,
-		"image_url_redacted":   item.ImageUrlRedacted,
 		"description":          item.Description,
 		"status":               item.Status,
 		"type":                 item.Type,
@@ -362,7 +395,6 @@ func FetchAllItemsByUserId(c *gin.Context) {
 			"id":                   item.ID,
 			"is_anonymous":         item.IsAnonymous,
 			"name":                 item.Name,
-			"image_url_redacted":   item.ImageUrlRedacted,
 			"description":          item.Description,
 			"status":               item.Status,
 			"type":                 item.Type,
