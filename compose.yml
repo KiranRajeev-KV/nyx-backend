@@ -53,22 +53,22 @@ services:
     networks:
       - nyx-network
 
-  garage:
-    image: dxflrs/garage:v2.2.0
-    container_name: nyx-garage
-    restart: unless-stopped
-    command: ["/garage", "server"]
-    ports:
-      - "3900:3900" # S3 API
-      - "3901:3901" # RPC / Gossip
-      - "3902:3902" # Web API
-      - "3903:3903" # Admin API
-    volumes:
-      - garage_data:/var/lib/garage/data
-      - garage_meta:/var/lib/garage/meta
-      - ./garage.toml:/etc/garage.toml  # config file
-    networks:
-      - nyx-network
+  # garage:
+  #   image: dxflrs/garage:v2.2.0
+  #   container_name: nyx-garage
+  #   restart: unless-stopped
+  #   command: ["/garage", "server"]
+  #   ports:
+  #     - "3900:3900" # S3 API
+  #     - "3901:3901" # RPC / Gossip
+  #     - "3902:3902" # Web API
+  #     - "3903:3903" # Admin API
+  #   volumes:
+  #     - garage_data:/var/lib/garage/data
+  #     - garage_meta:/var/lib/garage/meta
+  #     - ./garage.toml:/etc/garage.toml  # config file
+  #   networks:
+  #     - nyx-network
 
 volumes:
   postgres_data:

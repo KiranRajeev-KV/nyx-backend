@@ -47,4 +47,4 @@ sql:
             go_type: "encoding/json.RawMessage"
 
     database:
-      uri: "postgresql://postgres:1234@localhost:5432/postgres"
+      uri: "postgresql://postgres:1234@localhost:5432/postgres?sslmode=disable"
