@@ -281,6 +281,7 @@ SELECT
     i.name,
     i.image_url_redacted,
     i.image_url_original,
+    i.ai_desc,
     i.description,
     i.status,
     i.type,
@@ -328,6 +329,7 @@ type FetchItemByIDRow struct {
 	Name                string             `json:"name"`
 	ImageUrlRedacted    pgtype.Text        `json:"image_url_redacted"`
 	ImageUrlOriginal    pgtype.Text        `json:"image_url_original"`
+	AiDesc              pgtype.Text        `json:"ai_desc"`
 	Description         pgtype.Text        `json:"description"`
 	Status              ItemStatus         `json:"status"`
 	Type                ItemType           `json:"type"`
@@ -352,6 +354,7 @@ func (q *Queries) FetchItemByID(ctx context.Context, db DBTX, id uuid.UUID) (Fet
 		&i.Name,
 		&i.ImageUrlRedacted,
 		&i.ImageUrlOriginal,
+		&i.AiDesc,
 		&i.Description,
 		&i.Status,
 		&i.Type,
@@ -594,6 +597,32 @@ func (q *Queries) SoftDeleteItemById(ctx context.Context, db DBTX, arg SoftDelet
 	row := db.QueryRow(ctx, softDeleteItemById, arg.ID, arg.UserID)
 	var i SoftDeleteItemByIdRow
 	err := row.Scan(&i.ID, &i.Status, &i.UpdatedAt)
+	return i, err
+}
+
+const updateItemAIDesc = `-- name: UpdateItemAIDesc :one
+UPDATE items
+SET
+    ai_desc = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, ai_desc
+`
+
+type UpdateItemAIDescParams struct {
+	ID     uuid.UUID   `json:"id"`
+	AiDesc pgtype.Text `json:"ai_desc"`
+}
+
+type UpdateItemAIDescRow struct {
+	ID     uuid.UUID   `json:"id"`
+	AiDesc pgtype.Text `json:"ai_desc"`
+}
+
+func (q *Queries) UpdateItemAIDesc(ctx context.Context, db DBTX, arg UpdateItemAIDescParams) (UpdateItemAIDescRow, error) {
+	row := db.QueryRow(ctx, updateItemAIDesc, arg.ID, arg.AiDesc)
+	var i UpdateItemAIDescRow
+	err := row.Scan(&i.ID, &i.AiDesc)
 	return i, err
 }
 

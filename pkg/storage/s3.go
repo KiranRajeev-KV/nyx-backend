@@ -78,6 +78,21 @@ func (s *S3Service) GeneratePresignedPutURL(ctx context.Context, objectKey strin
 	return req.URL, nil
 }
 
+func (s *S3Service) GeneratePresignedGetURL(ctx context.Context, objectKey string, lifetime time.Duration) (string, error) {
+	req, err := s.PresignClient.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.BucketName),
+		Key:    aws.String(objectKey),
+	}, func(opts *s3.PresignOptions) {
+		opts.Expires = lifetime
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("could not generate presigned GET URL: %w", err)
+	}
+
+	return req.URL, nil
+}
+
 // GetPublicURL returns the full public URL for an object key.
 // For Supabase: https://[project-ref].supabase.co/storage/v1/object/public/[bucket]/[key]
 // For S3/Garage: https://[endpoint]/[bucket]/[key]

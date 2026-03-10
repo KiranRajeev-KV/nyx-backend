@@ -285,6 +285,7 @@ type Item struct {
 	Metadata            []byte             `json:"metadata"`
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+	AiDesc              pgtype.Text        `json:"ai_desc"`
 	SearchText          interface{}        `json:"search_text"`
 }
 

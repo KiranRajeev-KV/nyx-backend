@@ -30,6 +30,8 @@ type EnvConfig struct {
 	S3BucketName      string `koanf:"S3_BUCKET_NAME"`
 	S3AccessKeyID     string `koanf:"S3_ACCESS_KEY_ID"`
 	S3SecretAccessKey string `koanf:"S3_SECRET_ACCESS_KEY"`
+
+	OpenRouterAPIKey string `koanf:"OPENROUTER_API_KEY"`
 }
 
 var k = koanf.New(".")

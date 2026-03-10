@@ -12,6 +12,7 @@ import (
 	"github.com/KiranRajeev-KV/nyx-backend/internal/logger"
 	"github.com/KiranRajeev-KV/nyx-backend/internal/models"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
+	"github.com/KiranRajeev-KV/nyx-backend/pkg/ai"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -768,6 +769,100 @@ func UploadItemImage(c *gin.Context) {
 		"data": models.UploadItemImageResponse{
 			PresignedUrl: presignedUrl,
 			ObjectKey:    objectKey,
+		},
+	})
+	logger.Log.SuccessCtx(c)
+}
+
+func GenerateAIDesc(c *gin.Context) {
+	req, ok := pkg.ValidateRequest[models.GenerateAIDescRequest](c)
+	if !ok {
+		return
+	}
+
+	itemUUID, exists := pkg.GrabUuid(c, req.ItemId, "ITEMS", "itemId")
+	if !exists {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	conn, err := cmd.DBPool.Acquire(ctx)
+	if pkg.HandleDbAcquireErr(c, err, "ITEMS") {
+		return
+	}
+	defer conn.Release()
+
+	q := db.New()
+
+	item, err := q.FetchItemByID(ctx, conn, itemUUID)
+	if err == pgx.ErrNoRows {
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+			"message": "Item not found",
+		})
+		return
+	}
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to fetch item", err)
+		return
+	}
+
+	if item.ImageUrlOriginal.String == "" {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": "Item does not have an image. Please upload an image first",
+		})
+		return
+	}
+
+	if item.AiDesc.Valid && item.AiDesc.String != "" {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "AI description already exists",
+			"data": gin.H{
+				"ai_desc": item.AiDesc.String,
+			},
+		})
+		return
+	}
+
+	presignedURL, err := storage.S3.GeneratePresignedGetURL(ctx, item.ImageUrlOriginal.String, 30*time.Minute)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to generate URL for image",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to generate presigned GET URL", err)
+		return
+	}
+
+	describer := ai.NewDescriber(cmd.Env.OpenRouterAPIKey)
+	aiDesc, err := describer.GenerateAIDesc(ctx, presignedURL, item.Name, item.Description.String, item.LocationDescription.String)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to generate AI description",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to generate AI description", err)
+		return
+	}
+
+	updatedItem, err := q.UpdateItemAIDesc(ctx, conn, db.UpdateItemAIDescParams{
+		ID:     itemUUID,
+		AiDesc: pgtype.Text{String: aiDesc, Valid: true},
+	})
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to update item with AI description", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "AI description generated successfully",
+		"data": gin.H{
+			"ai_desc": updatedItem.AiDesc.String,
 		},
 	})
 	logger.Log.SuccessCtx(c)

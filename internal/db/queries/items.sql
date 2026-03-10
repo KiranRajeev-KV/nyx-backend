@@ -77,6 +77,7 @@ SELECT
     i.name,
     i.image_url_redacted,
     i.image_url_original,
+    i.ai_desc,
     i.description,
     i.status,
     i.type,
@@ -268,3 +269,11 @@ WHERE
 ORDER BY
     embedding <=> $1
 LIMIT 10;
+
+-- name: UpdateItemAIDesc :one
+UPDATE items
+SET
+    ai_desc = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, ai_desc;

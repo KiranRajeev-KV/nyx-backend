@@ -83,6 +83,17 @@ type UploadItemImageResponse struct {
 	ObjectKey    string `json:"object_key"`
 }
 
+type GenerateAIDescRequest struct {
+	ItemId string `json:"item_id"`
+}
+
+func (r GenerateAIDescRequest) Validate() (errorMsg string, err error) {
+	err = v.ValidateStruct(&r,
+		v.Field(&r.ItemId, v.Required.Error("Item ID is required"), is.UUID.Error("Item ID must be a valid UUID")),
+	)
+	return "Invalid request for generating AI description", err
+}
+
 type SearchItemsRequest struct {
 	Query string `json:"q"`
 	Type  string `json:"type"`
