@@ -7,7 +7,6 @@ import (
 
 type CreateClaimRequest struct {
 	FoundItemID   string  `json:"found_item_id"`
-	LostItemID    string  `json:"lost_item_id"`
 	ProofText     string  `json:"proof_text"`
 	ProofImageUrl *string `json:"proof_image_url"`
 }
@@ -15,7 +14,6 @@ type CreateClaimRequest struct {
 func (r CreateClaimRequest) Validate() (errorMsg string, err error) {
 	err = v.ValidateStruct(&r,
 		v.Field(&r.FoundItemID, v.Required.Error("Found item ID is required"), is.UUID.Error("Found item ID must be a valid UUID")),
-		v.Field(&r.LostItemID, v.Required.Error("Lost item ID is required"), is.UUID.Error("Lost item ID must be a valid UUID")),
 		v.Field(&r.ProofText, v.Required.Error("Proof text is required"), v.Length(10, 1000).Error("Proof text must be between 10 and 1000 characters")),
 		v.Field(&r.ProofImageUrl, v.Length(0, 500).Error("Proof image URL must be less than 500 characters")),
 	)

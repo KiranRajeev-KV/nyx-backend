@@ -39,11 +39,6 @@ func CreateClaim(c *gin.Context) {
 		return
 	}
 
-	lostItemUUID, exists := pkg.GrabUuid(c, req.LostItemID, "CLAIMS", "lostItemId")
-	if !exists {
-		return
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -72,47 +67,12 @@ func CreateClaim(c *gin.Context) {
 		return
 	}
 
-	// Fetch the LOST item (the claimant's own item)
-	lostItem, err := q.GetItemByID(ctx, conn, lostItemUUID)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-				"message": "Lost item not found",
-			})
-			logger.Log.WarnCtx(c, "[CLAIMS-WARN] Attempt to claim with non-existent lost item")
-			return
-		}
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": "Oops! Something happened. Please try again later",
-		})
-		logger.Log.ErrorCtx(c, "[CLAIMS-ERROR] Failed to fetch lost item for claim validation", err)
-		return
-	}
-
 	// Business rule: Can only claim FOUND items
 	if foundItem.Type != db.ItemTypeFOUND {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "Only FOUND items can be claimed",
 		})
 		logger.Log.WarnCtx(c, "[CLAIMS-WARN] Attempt to claim non-FOUND item")
-		return
-	}
-
-	// Business rule: Lost item must be of type LOST
-	if lostItem.Type != db.ItemTypeLOST {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": "Lost item must be of type LOST",
-		})
-		logger.Log.WarnCtx(c, "[CLAIMS-WARN] Attempt to use non-LOST item as lost item")
-		return
-	}
-
-	// Business rule: Lost item must belong to the claimant
-	if lostItem.UserID != userUUID {
-		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-			"message": "You can only claim with your own lost items",
-		})
-		logger.Log.WarnCtx(c, "[CLAIMS-WARN] Attempt to claim with someone else's lost item")
 		return
 	}
 
@@ -162,19 +122,6 @@ func CreateClaim(c *gin.Context) {
 		return
 	}
 
-	// Calculate similarity score between found and lost item embeddings
-	foundEmbedding, err := q.GetItemEmbedding(ctx, conn, foundItemUUID)
-	lostEmbedding, err2 := q.GetItemEmbedding(ctx, conn, lostItemUUID)
-
-	var similarityScore pgtype.Float8
-	if err == nil && err2 == nil && len(foundEmbedding) > 0 && len(lostEmbedding) > 0 {
-		similarity := cosineSimilarity(foundEmbedding, lostEmbedding)
-		similarityScore = pgtype.Float8{Float64: similarity, Valid: true}
-	} else {
-		// If either item doesn't have an embedding, set to 0
-		similarityScore = pgtype.Float8{Float64: 0, Valid: true}
-	}
-
 	// All validations passed, create claim in transaction
 	tx, err := cmd.DBPool.Begin(ctx)
 	if pkg.HandleDbTxnErr(c, err, "CLAIMS") {
@@ -189,12 +136,10 @@ func CreateClaim(c *gin.Context) {
 	}
 
 	newClaim, err := q.CreateClaim(ctx, tx, db.CreateClaimParams{
-		ItemID:          foundItemUUID,
-		ClaimantID:      userUUID,
-		LostItemID:      uuid.NullUUID{UUID: lostItemUUID, Valid: true},
-		ProofText:       pgtype.Text{String: req.ProofText, Valid: true},
-		ProofImageUrl:   proofImageUrl,
-		SimilarityScore: similarityScore,
+		ItemID:        foundItemUUID,
+		ClaimantID:    userUUID,
+		ProofText:     pgtype.Text{String: req.ProofText, Valid: true},
+		ProofImageUrl: proofImageUrl,
 	})
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
@@ -696,26 +641,4 @@ func UploadClaimProofImage(c *gin.Context) {
 		},
 	})
 	logger.Log.SuccessCtx(c)
-}
-
-func cosineSimilarity(a, b []float32) float64 {
-	if len(a) != len(b) || len(a) == 0 {
-		return 0
-	}
-
-	var dotProduct float64
-	var normA float64
-	var normB float64
-
-	for i := 0; i < len(a); i++ {
-		dotProduct += float64(a[i]) * float64(b[i])
-		normA += float64(a[i]) * float64(a[i])
-		normB += float64(b[i]) * float64(b[i])
-	}
-
-	if normA == 0 || normB == 0 {
-		return 0
-	}
-
-	return dotProduct / (normA * normB)
 }

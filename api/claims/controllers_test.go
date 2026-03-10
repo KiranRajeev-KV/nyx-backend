@@ -41,7 +41,6 @@ func TestCreateClaim_InvalidItemID_BadRequest(t *testing.T) {
 
 	reqBody := models.CreateClaimRequest{
 		FoundItemID: "not-a-uuid",
-		LostItemID:  "660e8400-e29b-41d4-a716-446655440001",
 		ProofText:   "This is a valid proof text that is longer than ten characters",
 	}
 
@@ -53,8 +52,7 @@ func TestCreateClaim_MissingFoundItemID_BadRequest(t *testing.T) {
 	router := setupCreateClaimTest()
 
 	reqBody := models.CreateClaimRequest{
-		LostItemID: "660e8400-e29b-41d4-a716-446655440001",
-		ProofText:  "This is a valid proof text that is longer than ten characters",
+		ProofText: "This is a valid proof text that is longer than ten characters",
 	}
 
 	tc := tests.ExecuteRequestWithJSONBody(router, "POST", "/claims", reqBody)
@@ -66,7 +64,6 @@ func TestCreateClaim_MissingProofText_BadRequest(t *testing.T) {
 
 	reqBody := models.CreateClaimRequest{
 		FoundItemID: "550e8400-e29b-41d4-a716-446655440000",
-		LostItemID:  "660e8400-e29b-41d4-a716-446655440001",
 	}
 
 	tc := tests.ExecuteRequestWithJSONBody(router, "POST", "/claims", reqBody)
@@ -78,7 +75,6 @@ func TestCreateClaim_ProofTextTooShort_BadRequest(t *testing.T) {
 
 	reqBody := models.CreateClaimRequest{
 		FoundItemID: "550e8400-e29b-41d4-a716-446655440000",
-		LostItemID:  "660e8400-e29b-41d4-a716-446655440001",
 		ProofText:   "Short",
 	}
 
@@ -96,7 +92,6 @@ func TestCreateClaim_ProofTextTooLong_BadRequest(t *testing.T) {
 
 	reqBody := models.CreateClaimRequest{
 		FoundItemID: "550e8400-e29b-41d4-a716-446655440000",
-		LostItemID:  "660e8400-e29b-41d4-a716-446655440001",
 		ProofText:   longProofText,
 	}
 
@@ -114,7 +109,6 @@ func TestCreateClaim_ProofImageURLTooLong_BadRequest(t *testing.T) {
 
 	reqBody := models.CreateClaimRequest{
 		FoundItemID:   "550e8400-e29b-41d4-a716-446655440000",
-		LostItemID:    "660e8400-e29b-41d4-a716-446655440001",
 		ProofText:     "This is a valid proof text that is longer than ten characters",
 		ProofImageUrl: &longURL,
 	}
@@ -140,7 +134,6 @@ func TestCreateClaim_MissingAuthContext_Fatal(t *testing.T) {
 
 	reqBody := models.CreateClaimRequest{
 		FoundItemID: "550e8400-e29b-41d4-a716-446655440000",
-		LostItemID:  "660e8400-e29b-41d4-a716-446655440001",
 		ProofText:   "This is a valid proof text that is longer than ten characters",
 	}
 

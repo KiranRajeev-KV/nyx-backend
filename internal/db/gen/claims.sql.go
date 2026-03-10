@@ -38,18 +38,17 @@ func (q *Queries) CheckExistingClaim(ctx context.Context, db DBTX, arg CheckExis
 
 const createClaim = `-- name: CreateClaim :one
 INSERT INTO claims (
-    item_id, claimant_id, lost_item_id, proof_text, proof_image_url, similarity_score, created_at, updated_at
+    item_id, claimant_id, proof_text, proof_image_url, similarity_score, created_at, updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, NOW(), NOW()
+    $1, $2, $3, $4, $5, NOW(), NOW()
 )
 RETURNING 
-    id, item_id, claimant_id, lost_item_id, status, similarity_score, created_at, updated_at
+    id, item_id, claimant_id, status, similarity_score, created_at, updated_at
 `
 
 type CreateClaimParams struct {
 	ItemID          uuid.UUID     `json:"item_id"`
 	ClaimantID      uuid.UUID     `json:"claimant_id"`
-	LostItemID      uuid.NullUUID `json:"lost_item_id"`
 	ProofText       pgtype.Text   `json:"proof_text"`
 	ProofImageUrl   pgtype.Text   `json:"proof_image_url"`
 	SimilarityScore pgtype.Float8 `json:"similarity_score"`
@@ -59,7 +58,6 @@ type CreateClaimRow struct {
 	ID              uuid.UUID          `json:"id"`
 	ItemID          uuid.UUID          `json:"item_id"`
 	ClaimantID      uuid.UUID          `json:"claimant_id"`
-	LostItemID      uuid.NullUUID      `json:"lost_item_id"`
 	Status          ClaimStatus        `json:"status"`
 	SimilarityScore pgtype.Float8      `json:"similarity_score"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
@@ -70,7 +68,6 @@ func (q *Queries) CreateClaim(ctx context.Context, db DBTX, arg CreateClaimParam
 	row := db.QueryRow(ctx, createClaim,
 		arg.ItemID,
 		arg.ClaimantID,
-		arg.LostItemID,
 		arg.ProofText,
 		arg.ProofImageUrl,
 		arg.SimilarityScore,
@@ -80,7 +77,6 @@ func (q *Queries) CreateClaim(ctx context.Context, db DBTX, arg CreateClaimParam
 		&i.ID,
 		&i.ItemID,
 		&i.ClaimantID,
-		&i.LostItemID,
 		&i.Status,
 		&i.SimilarityScore,
 		&i.CreatedAt,
