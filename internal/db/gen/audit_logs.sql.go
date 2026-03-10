@@ -13,6 +13,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createAuditLog = `-- name: CreateAuditLog :exec
+INSERT INTO audit_logs (actor_id, action, target_type, target_id)
+VALUES ($1, $2, $3, $4)
+`
+
+type CreateAuditLogParams struct {
+	ActorID    uuid.NullUUID `json:"actor_id"`
+	Action     string        `json:"action"`
+	TargetType TargetType    `json:"target_type"`
+	TargetID   uuid.NullUUID `json:"target_id"`
+}
+
+func (q *Queries) CreateAuditLog(ctx context.Context, db DBTX, arg CreateAuditLogParams) error {
+	_, err := db.Exec(ctx, createAuditLog,
+		arg.ActorID,
+		arg.Action,
+		arg.TargetType,
+		arg.TargetID,
+	)
+	return err
+}
+
 const fetchAuditLogs = `-- name: FetchAuditLogs :many
 SELECT
     al.id,

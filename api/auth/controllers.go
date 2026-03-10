@@ -12,6 +12,7 @@ import (
 	"github.com/KiranRajeev-KV/nyx-backend/internal/models"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -243,7 +244,7 @@ func VerifyOTP(c *gin.Context) {
 	}
 
 	// create user in users table
-	_, err = q.CreateUser(ctx, tx, db.CreateUserParams{
+	newUserID, err := q.CreateUser(ctx, tx, db.CreateUserParams{
 		Name:     onboarding.Name,
 		Email:    onboarding.Email,
 		Password: onboarding.Password,
@@ -272,6 +273,16 @@ func VerifyOTP(c *gin.Context) {
 		})
 		logger.Log.ErrorCtx(c, "[VERIFY-OTP-ERROR]: Failed to delete onboarding record", err)
 		return
+	}
+
+	err = q.CreateAuditLog(ctx, tx, db.CreateAuditLogParams{
+		ActorID:    uuid.NullUUID{UUID: newUserID.ID, Valid: true},
+		Action:     "USER_REGISTERED",
+		TargetType: "USER",
+		TargetID:   uuid.NullUUID{UUID: newUserID.ID, Valid: true},
+	})
+	if err != nil {
+		logger.Log.ErrorCtx(c, "[VERIFY-OTP-ERROR] Failed to create audit log", err)
 	}
 
 	// commit transaction
@@ -438,6 +449,16 @@ func LoginUser(c *gin.Context) {
 		return
 	}
 
+	err = q.CreateAuditLog(ctx, conn, db.CreateAuditLogParams{
+		ActorID:    uuid.NullUUID{UUID: user.ID, Valid: true},
+		Action:     "USER_LOGIN",
+		TargetType: "USER",
+		TargetID:   uuid.NullUUID{UUID: user.ID, Valid: true},
+	})
+	if err != nil {
+		logger.Log.ErrorCtx(c, "[LOGIN-ERROR] Failed to create audit log", err)
+	}
+
 	// set tokens in cookies
 	pkg.SetAuthCookie(c, accessToken)
 	pkg.SetRefreshCookie(c, refreshToken)
@@ -451,6 +472,16 @@ func LoginUser(c *gin.Context) {
 func LogoutUser(c *gin.Context) {
 	email, ok := pkg.GetEmail(c, "LOGOUT")
 	if !ok {
+		return
+	}
+
+	userId, ok := pkg.GrabUserId(c, "LOGOUT")
+	if !ok {
+		return
+	}
+
+	userUUID, exists := pkg.GrabUuid(c, userId, "LOGOUT", "userId")
+	if !exists {
 		return
 	}
 
@@ -473,6 +504,16 @@ func LogoutUser(c *gin.Context) {
 		})
 		logger.Log.ErrorCtx(c, "[LOGOUT-ERROR]: Failed to revoke refresh token in DB", err)
 		return
+	}
+
+	err = q.CreateAuditLog(ctx, conn, db.CreateAuditLogParams{
+		ActorID:    uuid.NullUUID{UUID: userUUID, Valid: true},
+		Action:     "USER_LOGOUT",
+		TargetType: "USER",
+		TargetID:   uuid.NullUUID{UUID: userUUID, Valid: true},
+	})
+	if err != nil {
+		logger.Log.ErrorCtx(c, "[LOGOUT-ERROR] Failed to create audit log", err)
 	}
 
 	pkg.NullifyCookies(c)
@@ -710,6 +751,22 @@ func ResetPassword(c *gin.Context) {
 		})
 		logger.Log.ErrorCtx(c, "[RESET-PASSWORD-ERROR]: Failed to delete password reset record", err)
 		return
+	}
+
+	// get user by email for audit log
+	user, err := q.GetUserByEmail(ctx, tx, tempEmail)
+	if err != nil {
+		logger.Log.ErrorCtx(c, "[RESET-PASSWORD-ERROR]: Failed to get user for audit log", err)
+	} else {
+		err = q.CreateAuditLog(ctx, tx, db.CreateAuditLogParams{
+			ActorID:    uuid.NullUUID{UUID: user.ID, Valid: true},
+			Action:     "PASSWORD_RESET",
+			TargetType: "USER",
+			TargetID:   uuid.NullUUID{UUID: user.ID, Valid: true},
+		})
+		if err != nil {
+			logger.Log.ErrorCtx(c, "[RESET-PASSWORD-ERROR] Failed to create audit log", err)
+		}
 	}
 
 	// commit
