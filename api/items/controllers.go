@@ -808,12 +808,9 @@ func UploadItemImage(c *gin.Context) {
 }
 
 func GenerateAIDesc(c *gin.Context) {
-	req, ok := pkg.ValidateRequest[models.GenerateAIDescRequest](c)
-	if !ok {
-		return
-	}
+	id := c.Param("id")
 
-	itemUUID, exists := pkg.GrabUuid(c, req.ItemId, "ITEMS", "itemId")
+	itemUUID, exists := pkg.GrabUuid(c, id, "ITEMS", "itemId")
 	if !exists {
 		return
 	}
@@ -880,7 +877,7 @@ func GenerateAIDesc(c *gin.Context) {
 		return
 	}
 
-	updatedItem, err := q.UpdateItemAIDesc(ctx, conn, db.UpdateItemAIDescParams{
+	_, err = q.UpdateItemAIDesc(ctx, conn, db.UpdateItemAIDescParams{
 		ID:     itemUUID,
 		AiDesc: pgtype.Text{String: aiDesc, Valid: true},
 	})
@@ -917,11 +914,7 @@ func GenerateAIDesc(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "AI description and embedding generated successfully",
-		"data": gin.H{
-			"ai_desc":   updatedItem.AiDesc.String,
-			"embedding": "generated",
-		},
+		"message": "AI description generated successfully",
 	})
 	logger.Log.SuccessCtx(c)
 }
