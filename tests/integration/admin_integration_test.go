@@ -50,11 +50,32 @@ func TestAdminFlow_Integration(t *testing.T) {
 		itemID = response["data"].(map[string]interface{})["id"].(string)
 	})
 
+	var lostItemID string
+	t.Run("Setup: User Creates Lost Item", func(t *testing.T) {
+		lostItemReq := models.CreateItemRequest{
+			Name:        "My Lost Watch",
+			Description: "Silver watch with a scratch",
+			Type:        "LOST",
+			Location:    "University Gym",
+		}
+		body, _ := json.Marshal(lostItemReq)
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/api/v1/items/", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		addCookies(req, userCookie)
+		testRouter.ServeHTTP(w, req)
+		require.Equal(t, http.StatusCreated, w.Code)
+		var response map[string]interface{}
+		json.Unmarshal(w.Body.Bytes(), &response)
+		lostItemID = response["data"].(map[string]interface{})["id"].(string)
+	})
+
 	var claimID string
 	t.Run("Setup: User Creates Claim", func(t *testing.T) {
 		claimReq := models.CreateClaimRequest{
-			ItemID:    itemID,
-			ProofText: "I have the matching receipt for this watch from 2024.",
+			FoundItemID: itemID,
+			LostItemID:  lostItemID,
+			ProofText:   "I have the matching receipt for this watch from 2024.",
 		}
 
 		body, _ := json.Marshal(claimReq)
@@ -124,7 +145,18 @@ func TestAdminFlow_Integration(t *testing.T) {
 		json.Unmarshal(w.Body.Bytes(), &res1)
 		item2ID = res1["data"].(map[string]interface{})["id"].(string)
 
-		claimReq := models.CreateClaimRequest{ItemID: item2ID, ProofText: "Fake proof"}
+		lostItemReq := models.CreateItemRequest{Name: "Lost Item2", Type: "LOST", Description: "Valid test description", Location: "Valid location length"}
+		bodyLost, _ := json.Marshal(lostItemReq)
+		wLost := httptest.NewRecorder()
+		rLost, _ := http.NewRequest("POST", "/api/v1/items/", bytes.NewBuffer(bodyLost))
+		rLost.Header.Set("Content-Type", "application/json")
+		addCookies(rLost, userCookie)
+		testRouter.ServeHTTP(wLost, rLost)
+		var resLost map[string]interface{}
+		json.Unmarshal(wLost.Body.Bytes(), &resLost)
+		lostItem2ID := resLost["data"].(map[string]interface{})["id"].(string)
+
+		claimReq := models.CreateClaimRequest{FoundItemID: item2ID, LostItemID: lostItem2ID, ProofText: "Fake proof"}
 		body2, _ := json.Marshal(claimReq)
 		w2 := httptest.NewRecorder()
 		req2, _ := http.NewRequest("POST", "/api/v1/claims/", bytes.NewBuffer(body2))
