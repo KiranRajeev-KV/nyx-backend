@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/pgvector/pgvector-go"
 )
 
 func FetchItems(c *gin.Context) {
@@ -859,10 +860,35 @@ func GenerateAIDesc(c *gin.Context) {
 		return
 	}
 
+	embedder := ai.NewEmbedder(cmd.Env.GeminiAPIKey)
+	embeddingValues, err := embedder.GenerateEmbedding(ctx, aiDesc)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to generate embedding",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to generate embedding", err)
+		return
+	}
+
+	embedding := pgvector.NewVector(embeddingValues)
+
+	_, err = q.UpdateItemEmbedding(ctx, conn, db.UpdateItemEmbeddingParams{
+		ID:        itemUUID,
+		Embedding: embedding,
+	})
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later",
+		})
+		logger.Log.ErrorCtx(c, "[ITEMS-ERROR] Failed to update item with embedding", err)
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"message": "AI description generated successfully",
+		"message": "AI description and embedding generated successfully",
 		"data": gin.H{
-			"ai_desc": updatedItem.AiDesc.String,
+			"ai_desc":   updatedItem.AiDesc.String,
+			"embedding": "generated",
 		},
 	})
 	logger.Log.SuccessCtx(c)

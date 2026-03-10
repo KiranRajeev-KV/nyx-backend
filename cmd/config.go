@@ -32,6 +32,7 @@ type EnvConfig struct {
 	S3SecretAccessKey string `koanf:"S3_SECRET_ACCESS_KEY"`
 
 	OpenRouterAPIKey string `koanf:"OPENROUTER_API_KEY"`
+	GeminiAPIKey     string `koanf:"GEMINI_API_KEY"`
 }
 
 var k = koanf.New(".")
