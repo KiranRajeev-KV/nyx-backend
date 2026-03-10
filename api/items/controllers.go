@@ -825,6 +825,14 @@ func UploadItemImage(c *gin.Context) {
 }
 
 func SimilarItems(c *gin.Context) {
+	// Check if embedding service is available
+	if !embedding.IsServiceAvailable() {
+		c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+			"message": "Service temporarily unavailable due to rate limits. Please try again later.",
+		})
+		return
+	}
+
 	id := c.Param("id")
 
 	itemUUID, exists := pkg.GrabUuid(c, id, "ITEMS", "itemId")

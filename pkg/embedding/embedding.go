@@ -1,38 +1,71 @@
 package embedding
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"time"
+	"os"
+	"path/filepath"
+
+	ort "github.com/yalue/onnxruntime_go"
 )
 
 var globalService *EmbeddingService
 
 type EmbeddingService struct {
-	apiKey string
-	model  string
-	client *http.Client
+	modelPath    string
+	imagePreproc *ImagePreprocessor
+	session      *ort.AdvancedSession
+	inputNames   []string
+	outputNames  []string
 }
 
-type HFResponse struct {
-	Data []HFEmbedding `json:"data"`
-}
-
-type HFEmbedding struct {
-	Embedding []float64 `json:"embedding"`
-}
-
-func NewEmbeddingService(apiKey string) *EmbeddingService {
-	return &EmbeddingService{
-		apiKey: apiKey,
-		model:  "openai/clip-vit-base-patch32",
-		client: &http.Client{
-			Timeout: 30 * time.Second,
-		},
+func NewEmbeddingService(modelPath string) (*EmbeddingService, error) {
+	modelFile := filepath.Join(modelPath, "vision_model.onnx")
+	if _, err := os.Stat(modelFile); os.IsNotExist(err) {
+		return nil, fmt.Errorf("ONNX model not found at %s", modelFile)
 	}
+
+	ort.SetSharedLibraryPath("/usr/local/lib/libonnxruntime.so.1.18.0")
+	err := ort.InitializeEnvironment()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize ONNX Runtime: %w", err)
+	}
+
+	inputNames := []string{"pixel_values"}
+	outputNames := []string{"embedding"}
+
+	inputTensor, err := ort.NewTensor(ort.NewShape(1, 3, 224, 224), make([]float32, 1*3*224*224))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create input tensor: %w", err)
+	}
+	defer inputTensor.Destroy()
+
+	outputTensor, err := ort.NewEmptyTensor[float32](ort.NewShape(1, 512))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create output tensor: %w", err)
+	}
+	defer outputTensor.Destroy()
+
+	session, err := ort.NewAdvancedSession(
+		modelFile,
+		inputNames,
+		outputNames,
+		[]ort.Value{inputTensor},
+		[]ort.Value{outputTensor},
+		nil,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ONNX session: %w", err)
+	}
+
+	svc := &EmbeddingService{
+		modelPath:    modelPath,
+		imagePreproc: NewImagePreprocessor(),
+		session:      session,
+		inputNames:   inputNames,
+		outputNames:  outputNames,
+	}
+
+	return svc, nil
 }
 
 func SetGlobalService(svc *EmbeddingService) {
@@ -44,54 +77,58 @@ func GetGlobalService() *EmbeddingService {
 }
 
 func (s *EmbeddingService) GetImageEmbedding(imageURL string) ([]float64, error) {
-	if s.apiKey == "" {
-		return nil, fmt.Errorf("HuggingFace API key not configured")
-	}
-
-	url := fmt.Sprintf("https://router.huggingface.co/models/%s", s.model)
-
-	payload := map[string]interface{}{
-		"inputs": map[string]string{
-			"image": imageURL,
-		},
-	}
-
-	jsonPayload, err := json.Marshal(payload)
+	inputData, err := s.imagePreproc.PreprocessFromURL(imageURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal payload: %w", err)
+		return nil, fmt.Errorf("failed to preprocess image: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
+	output, err := s.runInference(inputData)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to run inference: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+s.apiKey)
-	req.Header.Set("Content-Type", "application/json")
+	result := make([]float64, len(output))
+	for i, v := range output {
+		result[i] = float64(v)
+	}
 
-	resp, err := s.client.Do(req)
+	return result, nil
+}
+
+func (s *EmbeddingService) runInference(inputData []float32) ([]float32, error) {
+	inputTensor, err := ort.NewTensor(ort.NewShape(1, 3, 224, 224), inputData)
 	if err != nil {
-		return nil, fmt.Errorf("failed to call HuggingFace API: %w", err)
+		return nil, fmt.Errorf("failed to create input tensor: %w", err)
 	}
-	defer resp.Body.Close()
+	defer inputTensor.Destroy()
 
-	body, err := io.ReadAll(resp.Body)
+	outputTensor, err := ort.NewEmptyTensor[float32](ort.NewShape(1, 512))
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
+		return nil, fmt.Errorf("failed to create output tensor: %w", err)
+	}
+	defer outputTensor.Destroy()
+
+	session, err := ort.NewAdvancedSession(
+		filepath.Join(s.modelPath, "vision_model.onnx"),
+		s.inputNames,
+		s.outputNames,
+		[]ort.Value{inputTensor},
+		[]ort.Value{outputTensor},
+		nil,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create session: %w", err)
+	}
+	defer session.Destroy()
+
+	err = session.Run()
+	if err != nil {
+		return nil, fmt.Errorf("failed to run inference: %w", err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HuggingFace API returned status %d: %s", resp.StatusCode, string(body))
-	}
+	return outputTensor.GetData(), nil
+}
 
-	var result [][]float64
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w, body: %s", err, string(body))
-	}
-
-	if len(result) == 0 || len(result[0]) == 0 {
-		return nil, fmt.Errorf("no embedding returned from API")
-	}
-
-	return result[0], nil
+func IsServiceAvailable() bool {
+	return globalService != nil
 }
