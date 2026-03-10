@@ -55,20 +55,29 @@ func NewDescriber(apiKey string) *Describer {
 }
 
 func (d *Describer) GenerateAIDesc(ctx context.Context, imageURL, name, description, location string) (string, error) {
-	prompt := fmt.Sprintf(`Analyze this lost/found item image and provide a detailed description that would help identify the item's owner or match it with lost items.
+	prompt := fmt.Sprintf(`Analyze the provided image of a lost or found item and generate a detailed plain-text description that can be used for search indexing.
 
-Item Details:
-- Name: %s
-- Description: %s  
-- Location: %s
+Item metadata:
+Name: %s
+Description: %s
+Location: %s
 
-Please provide a comprehensive description focusing on:
-1. Visual details visible in the image (brand, color, style, condition, distinguishing marks)
-2. Any text or serial numbers visible
-3. The type and category of item
-4. Any other details that could help identify or match this item
+Instructions:
+- Describe the item using clear natural language in plain text.
+- Focus on identifying features: brand, color, material, style, condition, markings, and unique characteristics.
+- Include any visible text, logos, serial numbers, or labels.
+- Mention the type and category of the item.
+- Mention contextual clues from the environment if visible.
+- If the image is unclear or the item cannot be identified, state that.
 
-Be specific and detailed. If the image is unclear or the item is not visible, note that as well.`, name, description, location)
+Output Rules:
+- Return ONLY one continuous paragraph of descriptive text.
+- Do NOT use markdown.
+- Do NOT use headings, bullet points, numbering, or sections.
+- Do NOT repeat the metadata fields.
+- Do NOT include explanations or formatting.
+- At the end of the paragraph append relevant keywords separated by commas.
+- The output should be suitable for storing in a database for full-text search.`, name, description, location)
 
 	reqBody := OpenRouterRequest{
 		Model: d.model,

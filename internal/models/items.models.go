@@ -24,7 +24,7 @@ func (r CreateItemRequest) Validate() (errorMsg string, err error) {
 		v.Field(&r.Name, v.Required.Error("Name is required"), v.Length(3, 100).Error("Name must be between 3 and 100 characters")),
 		v.Field(&r.Description, v.Required.Error("Description is required"), v.Length(10, 500).Error("Description must be between 10 and 500 characters")),
 		v.Field(&r.Type, v.Required.Error("Type is required"), v.In("LOST", "FOUND").Error("Type must be either LOST or FOUND")),
-		v.Field(&r.Location, v.Length(5, 200).Error("Last known location/Found location must be between 5 and 200 characters")),
+		v.Field(&r.Location, v.Length(1, 200).Error("Last known location/Found location must be between 5 and 200 characters")),
 		v.Field(&r.TimeAt),
 		v.Field(&r.Latitude),
 		v.Field(&r.Longitude),
