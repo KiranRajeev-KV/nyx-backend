@@ -10,7 +10,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/pgvector/pgvector-go"
 )
 
 const checkExistingClaim = `-- name: CheckExistingClaim :one
@@ -359,17 +358,16 @@ func (q *Queries) FetchClaimsByUser(ctx context.Context, db DBTX, claimantID uui
 }
 
 const getItemByID = `-- name: GetItemByID :one
-SELECT id, user_id, type, status, embedding
+SELECT id, user_id, type, status
 FROM items 
 WHERE id = $1
 `
 
 type GetItemByIDRow struct {
-	ID        uuid.UUID       `json:"id"`
-	UserID    uuid.UUID       `json:"user_id"`
-	Type      ItemType        `json:"type"`
-	Status    ItemStatus      `json:"status"`
-	Embedding pgvector.Vector `json:"embedding"`
+	ID     uuid.UUID  `json:"id"`
+	UserID uuid.UUID  `json:"user_id"`
+	Type   ItemType   `json:"type"`
+	Status ItemStatus `json:"status"`
 }
 
 func (q *Queries) GetItemByID(ctx context.Context, db DBTX, id uuid.UUID) (GetItemByIDRow, error) {
@@ -380,7 +378,6 @@ func (q *Queries) GetItemByID(ctx context.Context, db DBTX, id uuid.UUID) (GetIt
 		&i.UserID,
 		&i.Type,
 		&i.Status,
-		&i.Embedding,
 	)
 	return i, err
 }

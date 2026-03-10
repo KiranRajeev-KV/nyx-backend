@@ -163,20 +163,10 @@ func CreateClaim(c *gin.Context) {
 		return
 	}
 
-	// Calculate similarity score between found and lost item embeddings
+	// Similarity score is calculated when embeddings are available (populated from ai_desc)
+	// For now, set to null since embeddings are not populated yet
 	var similarityScore pgtype.Float8
-	if len(foundItem.Embedding.Slice()) > 0 && len(lostItem.Embedding.Slice()) > 0 {
-		// Use pgvector cosine distance to calculate similarity
-		// Cosine distance = 1 - cosine similarity
-		// We need to calculate cosine similarity: 1 - distance
-		// Using: (a · b) / (||a|| * ||b||)
-
-		similarity := cosineSimilarity(foundItem.Embedding.Slice(), lostItem.Embedding.Slice())
-		similarityScore = pgtype.Float8{Float64: similarity, Valid: true}
-	} else {
-		// If either item doesn't have an embedding, set to null
-		similarityScore = pgtype.Float8{Valid: false}
-	}
+	similarityScore = pgtype.Float8{Valid: false}
 
 	// All validations passed, create claim in transaction
 	tx, err := cmd.DBPool.Begin(ctx)
@@ -240,29 +230,6 @@ func CreateClaim(c *gin.Context) {
 		"data":    newClaim,
 	})
 	logger.Log.SuccessCtx(c)
-}
-
-// cosineSimilarity calculates the cosine similarity between two vectors
-func cosineSimilarity(a, b []float32) float64 {
-	if len(a) != len(b) || len(a) == 0 {
-		return 0
-	}
-
-	var dotProduct float64
-	var normA float64
-	var normB float64
-
-	for i := 0; i < len(a); i++ {
-		dotProduct += float64(a[i]) * float64(b[i])
-		normA += float64(a[i]) * float64(a[i])
-		normB += float64(b[i]) * float64(b[i])
-	}
-
-	if normA == 0 || normB == 0 {
-		return 0
-	}
-
-	return dotProduct / (math.Sqrt(normA) * math.Sqrt(normB))
 }
 
 func FetchUserClaims(c *gin.Context) {

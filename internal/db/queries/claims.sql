@@ -109,7 +109,7 @@ FROM claims
 WHERE item_id = $1 AND status = 'PENDING';
 
 -- name: GetItemByID :one
-SELECT id, user_id, type, status, embedding
+SELECT id, user_id, type, status
 FROM items 
 WHERE id = $1;
 
