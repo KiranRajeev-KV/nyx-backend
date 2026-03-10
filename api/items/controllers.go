@@ -138,11 +138,10 @@ func SearchItems(c *gin.Context) {
 
 	var items []db.SearchItemsRow
 
-	if typeParam != "" {
-		items, err = q.SearchItems(ctx, conn, query+" "+typeParam)
-	} else {
-		items, err = q.SearchItems(ctx, conn, query)
-	}
+	items, err = q.SearchItems(ctx, conn, db.SearchItemsParams{
+		PlaintoTsquery: query,
+		Column2:        typeParam,
+	})
 
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{

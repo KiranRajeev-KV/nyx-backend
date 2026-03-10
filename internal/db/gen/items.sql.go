@@ -450,9 +450,15 @@ FROM
 WHERE
     search_text @@ plainto_tsquery('english', $1)
     AND (status = 'OPEN' OR status = 'PENDING_CLAIM')
+    AND ($2::text IS NULL OR type = $2::item_type)
 ORDER BY
     ts_rank(search_text, plainto_tsquery('english', $1)) DESC
 `
+
+type SearchItemsParams struct {
+	PlaintoTsquery string `json:"plainto_tsquery"`
+	Column2        string `json:"column_2"`
+}
 
 type SearchItemsRow struct {
 	ID               uuid.UUID          `json:"id"`
@@ -465,8 +471,8 @@ type SearchItemsRow struct {
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 }
 
-func (q *Queries) SearchItems(ctx context.Context, db DBTX, plaintoTsquery string) ([]SearchItemsRow, error) {
-	rows, err := db.Query(ctx, searchItems, plaintoTsquery)
+func (q *Queries) SearchItems(ctx context.Context, db DBTX, arg SearchItemsParams) ([]SearchItemsRow, error) {
+	rows, err := db.Query(ctx, searchItems, arg.PlaintoTsquery, arg.Column2)
 	if err != nil {
 		return nil, err
 	}

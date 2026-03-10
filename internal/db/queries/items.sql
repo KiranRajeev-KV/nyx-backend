@@ -236,6 +236,7 @@ FROM
 WHERE
     search_text @@ plainto_tsquery('english', $1)
     AND (status = 'OPEN' OR status = 'PENDING_CLAIM')
+    AND ($2::text IS NULL OR type = $2::item_type)
 ORDER BY
     ts_rank(search_text, plainto_tsquery('english', $1)) DESC;
 
