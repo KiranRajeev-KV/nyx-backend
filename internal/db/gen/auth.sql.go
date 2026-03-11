@@ -128,6 +128,7 @@ SELECT
   id,
   name,
   email,
+  phone,
   ROLE,
   is_banned
 FROM
@@ -137,11 +138,12 @@ WHERE
 `
 
 type FetchUserSessionRow struct {
-	ID       uuid.UUID `json:"id"`
-	Name     string    `json:"name"`
-	Email    string    `json:"email"`
-	Role     UserRole  `json:"role"`
-	IsBanned bool      `json:"is_banned"`
+	ID       uuid.UUID   `json:"id"`
+	Name     string      `json:"name"`
+	Email    string      `json:"email"`
+	Phone    pgtype.Text `json:"phone"`
+	Role     UserRole    `json:"role"`
+	IsBanned bool        `json:"is_banned"`
 }
 
 func (q *Queries) FetchUserSession(ctx context.Context, db DBTX, email string) (FetchUserSessionRow, error) {
@@ -151,6 +153,7 @@ func (q *Queries) FetchUserSession(ctx context.Context, db DBTX, email string) (
 		&i.ID,
 		&i.Name,
 		&i.Email,
+		&i.Phone,
 		&i.Role,
 		&i.IsBanned,
 	)

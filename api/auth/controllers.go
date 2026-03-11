@@ -829,6 +829,7 @@ func FetchUserSession(c *gin.Context) {
 		"message":   "User session obtained successfully",
 		"name":      result.Name,
 		"email":     result.Email,
+		"phone":     result.Phone.String,
 		"role":      result.Role,
 		"id":        result.ID.String(),
 		"is_banned": result.IsBanned,

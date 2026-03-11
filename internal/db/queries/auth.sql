@@ -114,6 +114,7 @@ SELECT
   id,
   name,
   email,
+  phone,
   ROLE,
   is_banned
 FROM
