@@ -13,7 +13,7 @@ import (
 
 func SetAuthCookie(c *gin.Context, authTokenString string) {
 	if cmd.Env.Environment == "PROD" {
-		c.SetSameSite(http.SameSiteStrictMode)
+		c.SetSameSite(http.SameSiteNoneMode)
 	} else {
 		c.SetSameSite(http.SameSiteNoneMode)
 	}
@@ -22,7 +22,7 @@ func SetAuthCookie(c *gin.Context, authTokenString string) {
 		authTokenString,      // value
 		3600,                 // maxAge (1 hour)
 		"/",                  // path
-		cmd.Env.CookieDomain, // domain
+		"",                   // domain
 		cmd.Env.CookieSecure, // secure
 		true,                 // httpOnly
 	)
@@ -30,7 +30,7 @@ func SetAuthCookie(c *gin.Context, authTokenString string) {
 
 func SetRefreshCookie(c *gin.Context, refreshTokenString string) {
 	if cmd.Env.Environment == "PROD" {
-		c.SetSameSite(http.SameSiteStrictMode)
+		c.SetSameSite(http.SameSiteNoneMode)
 	} else {
 		c.SetSameSite(http.SameSiteNoneMode)
 	}
@@ -39,7 +39,7 @@ func SetRefreshCookie(c *gin.Context, refreshTokenString string) {
 		refreshTokenString,   // value
 		3600*24*90,           // maxAge (90 days)
 		"/",                  // path
-		cmd.Env.CookieDomain, // domain
+		"",                   // domain
 		cmd.Env.CookieSecure, // secure
 		true,                 // httpOnly
 	)
@@ -47,7 +47,7 @@ func SetRefreshCookie(c *gin.Context, refreshTokenString string) {
 
 func SetTempCookie(c *gin.Context, tempTokenString string) {
 	if cmd.Env.Environment == "PROD" {
-		c.SetSameSite(http.SameSiteStrictMode)
+		c.SetSameSite(http.SameSiteNoneMode)
 	} else {
 		c.SetSameSite(http.SameSiteNoneMode)
 	}
@@ -56,7 +56,7 @@ func SetTempCookie(c *gin.Context, tempTokenString string) {
 		tempTokenString,      // value
 		5*60,                 // maxAge (5 mins)
 		"/",                  // path
-		cmd.Env.CookieDomain, // domain
+		"",                   // domain
 		cmd.Env.CookieSecure, // secure
 		true,                 // httpOnly
 	)
@@ -67,13 +67,13 @@ func SetTempCookie(c *gin.Context, tempTokenString string) {
  */
 func NullifyCookies(c *gin.Context) {
 	if cmd.Env.Environment == "PROD" {
-		c.SetSameSite(http.SameSiteStrictMode)
+		c.SetSameSite(http.SameSiteNoneMode)
 	} else {
 		c.SetSameSite(http.SameSiteNoneMode)
 	}
 
-	c.SetCookie("access_token", "", -1, "/", cmd.Env.CookieDomain, cmd.Env.CookieSecure, true)
-	c.SetCookie("refresh_token", "", -1, "/", cmd.Env.CookieDomain, cmd.Env.CookieSecure, true)
+	c.SetCookie("access_token", "", -1, "/", "", cmd.Env.CookieSecure, true)
+	c.SetCookie("refresh_token", "", -1, "/", "", cmd.Env.CookieSecure, true)
 
 	email, exists := c.Get("email")
 	if !exists {
@@ -109,10 +109,10 @@ func RevokeRefreshToken(c *gin.Context, email string) {
 
 func ClearTempCookie(c *gin.Context) {
 	if cmd.Env.Environment == "PROD" {
-		c.SetSameSite(http.SameSiteStrictMode)
+		c.SetSameSite(http.SameSiteNoneMode)
 	} else {
 		c.SetSameSite(http.SameSiteNoneMode)
 	}
 
-	c.SetCookie("temp_token", "", -1, "/", cmd.Env.CookieDomain, cmd.Env.CookieSecure, true)
+	c.SetCookie("temp_token", "", -1, "/", "", cmd.Env.CookieSecure, true)
 }
