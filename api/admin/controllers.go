@@ -41,15 +41,20 @@ func FetchAllUsers(c *gin.Context) {
 
 	response := make([]gin.H, len(users))
 	for i, user := range users {
+		var trustScore int32
+		if user.TrustScore.Valid {
+			trustScore = user.TrustScore.Int32
+		}
+
 		response[i] = gin.H{
 			"id":          user.ID,
 			"name":        user.Name,
 			"email":       user.Email,
 			"role":        user.Role,
 			"is_banned":   user.IsBanned,
-			"trust_score": user.TrustScore,
-			"created_at":  user.CreatedAt,
-			"updated_at":  user.UpdatedAt,
+			"trust_score": trustScore,
+			"created_at":  user.CreatedAt.Time,
+			"updated_at":  user.UpdatedAt.Time,
 		}
 	}
 
