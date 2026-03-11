@@ -13,8 +13,8 @@ import (
 func init() {
 	tests.InitTestLogger()
 
-	// Change to project root to load RSA keys
-	os.Chdir("/home/kr/dev/nyx-backend")
+	// Change to project root to load RSA keys (one dir up from pkg)
+	os.Chdir("..")
 	pkg.InitPaseto()
 }
 

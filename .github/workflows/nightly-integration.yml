@@ -1,0 +1,55 @@
+name: Nightly Backend Integration
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # Run at 2 AM UTC every night
+  workflow_dispatch:
+
+jobs:
+  integration-tests:
+    name: Run Database Integration & Regression Tests
+    runs-on: ubuntu-latest
+    
+    # Run a postgres service container for true database tests
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: nyx_test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+          cache-dependency-path: 'nyx-backend/go.sum'
+
+      - name: Run Schema Migrations
+        working-directory: ./nyx-backend
+        run: |
+          # Typically, you would run your migration tool here 
+          # Example: golang-migrate or goose
+          # goose postgres "postgresql://testuser:testpassword@localhost:5432/nyx_test_db?sslmode=disable" up
+
+      - name: Execute Full Integration Suite
+        working-directory: ./nyx-backend
+        env:
+          TEST_DATABASE_URL: "postgresql://testuser:testpassword@localhost:5432/nyx_test_db?sslmode=disable"
+          RUN_INTEGRATION_TESTS: "true"
+          ENVIRONMENT: "TEST"
+          PASETO_KEY: "12345678901234567890123456789012"
+        run: |
+          go test -v ./tests/integration/...
