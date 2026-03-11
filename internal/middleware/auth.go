@@ -44,43 +44,41 @@ func Auth(c *gin.Context) {
 		return
 	}
 
-	if accessErr == http.ErrNoCookie {
-		// Check if refresh token is valid. If yes, only then check for access token
-		// validity. If access token is valid then setup gin.Context map otherwise
-		// mint new token and then setup gin.Context map
-		validToken, err := pkg.VerifyRefreshToken(c, refreshToken)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"message": "Access denied.",
-			})
-			logger.Log.ErrorCtx(c, "[COOKIE-ERROR]: Failed to verify refresh token", err)
-			return
-		}
+	// If we reach here, either the access token is missing, or it is expired/invalid.
+	// In both cases, we should attempt to mint a new one using the refresh token.
 
-		refreshTokenClaims := validToken.Claims()
-		userId, _ := refreshTokenClaims["aud"].(string)
-		email, _ := refreshTokenClaims["jti"].(string)
-		role := db.UserRole(refreshTokenClaims["role"].(string))
+	validToken, err := pkg.VerifyRefreshToken(c, refreshToken)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"message": "Access denied. Session expired.",
+		})
+		logger.Log.ErrorCtx(c, "[COOKIE-ERROR]: Failed to verify refresh token", err)
+		return
+	}
 
-		// Creating and setting auth token, so it can be used for future requests
-		authToken, err := pkg.CreateAuthToken(userId, email, role)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-				"message": "Oops! Something happened. Please try again later.",
-			})
-			logger.Log.FatalCtx(c, "[COOKIE-ERROR]: Failed to mint new auth token", err)
-			return
-		}
-		pkg.SetAuthCookie(c, authToken)
+	refreshTokenClaims := validToken.Claims()
+	userId, _ := refreshTokenClaims["aud"].(string)
+	email, _ := refreshTokenClaims["jti"].(string)
+	role := db.UserRole(refreshTokenClaims["role"].(string))
 
-		c.Set("userId", userId)
-		c.Set("email", email)
-		c.Set("role", string(role))
+	// Creating and setting auth token, so it can be used for future requests
+	authToken, err := pkg.CreateAuthToken(userId, email, role)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": "Oops! Something happened. Please try again later.",
+		})
+		logger.Log.FatalCtx(c, "[COOKIE-ERROR]: Failed to mint new auth token", err)
+		return
+	}
+	pkg.SetAuthCookie(c, authToken)
 
-		// Check if user is banned
-		if checkBanned(c) {
-			return
-		}
+	c.Set("userId", userId)
+	c.Set("email", email)
+	c.Set("role", string(role))
+
+	// Check if user is banned
+	if checkBanned(c) {
+		return
 	}
 
 	c.Next()
