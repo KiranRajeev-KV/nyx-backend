@@ -35,15 +35,14 @@ func (q *Queries) SeedAuditLog(ctx context.Context, db DBTX, arg SeedAuditLogPar
 }
 
 const seedClaim = `-- name: SeedClaim :one
-INSERT INTO claims (item_id, claimant_id, lost_item_id, status, proof_text, similarity_score)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO claims (item_id, claimant_id, status, proof_text, similarity_score)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id
 `
 
 type SeedClaimParams struct {
 	ItemID          uuid.UUID     `json:"item_id"`
 	ClaimantID      uuid.UUID     `json:"claimant_id"`
-	LostItemID      uuid.NullUUID `json:"lost_item_id"`
 	Status          ClaimStatus   `json:"status"`
 	ProofText       pgtype.Text   `json:"proof_text"`
 	SimilarityScore pgtype.Float8 `json:"similarity_score"`
@@ -53,7 +52,6 @@ func (q *Queries) SeedClaim(ctx context.Context, db DBTX, arg SeedClaimParams) (
 	row := db.QueryRow(ctx, seedClaim,
 		arg.ItemID,
 		arg.ClaimantID,
-		arg.LostItemID,
 		arg.Status,
 		arg.ProofText,
 		arg.SimilarityScore,

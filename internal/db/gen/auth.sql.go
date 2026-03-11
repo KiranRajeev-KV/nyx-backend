@@ -128,7 +128,8 @@ SELECT
   id,
   name,
   email,
-  ROLE
+  ROLE,
+  is_banned
 FROM
   users
 WHERE
@@ -136,10 +137,11 @@ WHERE
 `
 
 type FetchUserSessionRow struct {
-	ID    uuid.UUID `json:"id"`
-	Name  string    `json:"name"`
-	Email string    `json:"email"`
-	Role  UserRole  `json:"role"`
+	ID       uuid.UUID `json:"id"`
+	Name     string    `json:"name"`
+	Email    string    `json:"email"`
+	Role     UserRole  `json:"role"`
+	IsBanned bool      `json:"is_banned"`
 }
 
 func (q *Queries) FetchUserSession(ctx context.Context, db DBTX, email string) (FetchUserSessionRow, error) {
@@ -150,6 +152,7 @@ func (q *Queries) FetchUserSession(ctx context.Context, db DBTX, email string) (
 		&i.Name,
 		&i.Email,
 		&i.Role,
+		&i.IsBanned,
 	)
 	return i, err
 }
@@ -235,6 +238,7 @@ SELECT
   email,
   PASSWORD,
   ROLE,
+  is_banned,
   trust_score,
   created_at,
   updated_at
@@ -250,6 +254,7 @@ type GetUserByEmailRow struct {
 	Email      string             `json:"email"`
 	Password   string             `json:"password"`
 	Role       UserRole           `json:"role"`
+	IsBanned   bool               `json:"is_banned"`
 	TrustScore pgtype.Int4        `json:"trust_score"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
@@ -264,6 +269,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, db DBTX, email string) (Ge
 		&i.Email,
 		&i.Password,
 		&i.Role,
+		&i.IsBanned,
 		&i.TrustScore,
 		&i.CreatedAt,
 		&i.UpdatedAt,

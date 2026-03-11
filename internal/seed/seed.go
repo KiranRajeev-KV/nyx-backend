@@ -301,7 +301,6 @@ func (s *Seeder) seedClaims(ctx context.Context, items []db.SeedItemRow, users [
 
 	for i := 0; i < 15; i++ {
 		foundItemID := foundItems[rand.Intn(len(foundItems))]
-		lostItemID := lostItems[rand.Intn(len(lostItems))]
 		claimantID := users[rand.Intn(len(users))]
 		status := statuses[rand.Intn(len(statuses))]
 
@@ -311,7 +310,6 @@ func (s *Seeder) seedClaims(ctx context.Context, items []db.SeedItemRow, users [
 		id, err := s.queries.SeedClaim(ctx, conn, db.SeedClaimParams{
 			ItemID:          foundItemID,
 			ClaimantID:      claimantID,
-			LostItemID:      uuid.NullUUID{UUID: lostItemID, Valid: true},
 			Status:          status,
 			ProofText:       pgtype.Text{String: proof, Valid: true},
 			SimilarityScore: pgtype.Float8{Float64: score, Valid: true},

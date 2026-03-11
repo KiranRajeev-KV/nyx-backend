@@ -251,7 +251,6 @@ type Claim struct {
 	ProcessedBy     uuid.NullUUID      `json:"processed_by"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
-	LostItemID      uuid.NullUUID      `json:"lost_item_id"`
 }
 
 type Hub struct {
@@ -308,6 +307,7 @@ type User struct {
 	TrustScore   pgtype.Int4        `json:"trust_score"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	IsBanned     bool               `json:"is_banned"`
 }
 
 type UserOnboarding struct {

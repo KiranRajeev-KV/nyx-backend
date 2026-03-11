@@ -91,6 +91,7 @@ SELECT
   email,
   PASSWORD,
   ROLE,
+  is_banned,
   trust_score,
   created_at,
   updated_at
@@ -113,7 +114,8 @@ SELECT
   id,
   name,
   email,
-  ROLE
+  ROLE,
+  is_banned
 FROM
   users
 WHERE

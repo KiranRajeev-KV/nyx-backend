@@ -1,12 +1,16 @@
 package mw
 
 import (
+	"context"
 	"net/http"
+	"time"
 
+	"github.com/KiranRajeev-KV/nyx-backend/cmd"
 	db "github.com/KiranRajeev-KV/nyx-backend/internal/db/gen"
 	"github.com/KiranRajeev-KV/nyx-backend/internal/logger"
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func Auth(c *gin.Context) {
@@ -31,6 +35,10 @@ func Auth(c *gin.Context) {
 
 	accessToken, accessErr := c.Cookie("access_token")
 	if accessErr == nil && pkg.VerifyTokens(c, accessToken, refreshToken) {
+		// Check if user is banned
+		if checkBanned(c) {
+			return
+		}
 		c.Next()
 		return
 	}
@@ -67,9 +75,56 @@ func Auth(c *gin.Context) {
 		c.Set("userId", userId)
 		c.Set("email", email)
 		c.Set("role", string(role))
+
+		// Check if user is banned
+		if checkBanned(c) {
+			return
+		}
 	}
 
 	c.Next()
+}
+
+// checkBanned looks up the user's ban status from the DB.
+// Returns true if the user is banned (and response was already sent).
+func checkBanned(c *gin.Context) bool {
+	userIdStr, ok := c.Get("userId")
+	if !ok {
+		return false
+	}
+
+	userUUID, err := uuid.Parse(userIdStr.(string))
+	if err != nil {
+		return false
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	conn, err := cmd.DBPool.Acquire(ctx)
+	if err != nil {
+		logger.Log.ErrorCtx(c, "[AUTH-BAN-CHECK] Failed to acquire DB connection", err)
+		return false // fail open — don't block if DB is unavailable
+	}
+	defer conn.Release()
+
+	q := db.New()
+	isBanned, err := q.CheckUserBanned(ctx, conn, userUUID)
+	if err != nil {
+		logger.Log.ErrorCtx(c, "[AUTH-BAN-CHECK] Failed to check ban status", err)
+		return false
+	}
+
+	if isBanned {
+		pkg.NullifyCookies(c)
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+			"message": "Your account has been suspended. Contact support for assistance.",
+		})
+		logger.Log.WarnCtx(c, "[AUTH-BAN-CHECK] Banned user attempted access")
+		return true
+	}
+
+	return false
 }
 
 func TempAuth(c *gin.Context) {

@@ -417,6 +417,15 @@ func LoginUser(c *gin.Context) {
 		return
 	}
 
+	// check if user is banned
+	if user.IsBanned {
+		c.JSON(http.StatusForbidden, gin.H{
+			"message": "Your account has been suspended. Contact support for assistance.",
+		})
+		logger.Log.InfoCtx(c, "[LOGIN-INFO]: Banned user attempted login")
+		return
+	}
+
 	// create paseto tokens
 	accessToken, err := pkg.CreateAuthToken(user.ID.String(), user.Email, user.Role)
 	if err != nil {
@@ -817,11 +826,12 @@ func FetchUserSession(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "User session obtained successfully",
-		"name":    result.Name,
-		"email":   result.Email,
-		"role":    result.Role,
-		"id":      result.ID.String(),
+		"message":   "User session obtained successfully",
+		"name":      result.Name,
+		"email":     result.Email,
+		"role":      result.Role,
+		"id":        result.ID.String(),
+		"is_banned": result.IsBanned,
 	})
 	logger.Log.SuccessCtx(c)
 }

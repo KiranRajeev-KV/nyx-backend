@@ -19,6 +19,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
+	apiAdmin "github.com/KiranRajeev-KV/nyx-backend/api/admin"
 	apiAudit "github.com/KiranRajeev-KV/nyx-backend/api/audit"
 	apiAuth "github.com/KiranRajeev-KV/nyx-backend/api/auth"
 	apiClaims "github.com/KiranRajeev-KV/nyx-backend/api/claims"
@@ -125,6 +126,7 @@ func StartServer() {
 	apiItems.ItemRoutes(v2)
 	apiHubs.HubRoutes(v2)
 	apiClaims.ClaimRoutes(v2)
+	apiAdmin.AdminRoutes(v2)
 
 	// === Server Setup ===
 

@@ -18,8 +18,8 @@ VALUES ($1, sqlc.narg('hub_id'), $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING id, type;
 
 -- name: SeedClaim :one
-INSERT INTO claims (item_id, claimant_id, lost_item_id, status, proof_text, similarity_score)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO claims (item_id, claimant_id, status, proof_text, similarity_score)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id;
 
 -- name: SeedAuditLog :exec
