@@ -1,0 +1,71 @@
+name: API Smoke & Security Probes
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'nyx-backend/api/**'
+  workflow_dispatch:
+
+jobs:
+  api-contract-tests:
+    name: Bruno API Contract Validation
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: nyx_test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Install Node & Bruno CLI
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: npm install -g @usebruno/cli
+
+      - name: Build & Run Go Server in Background
+        working-directory: ./nyx-backend
+        env:
+          DATABASE_URL: "postgresql://testuser:testpassword@localhost:5432/nyx_test_db?sslmode=disable"
+          PORT: 8080
+          PASETO_KEY: "12345678901234567890123456789012"
+          ENVIRONMENT: "CI"
+        run: |
+          go run cmd/main.go &
+          # Give it a few seconds to spin up port 8080
+          sleep 10
+          
+      - name: Run Bruno API Smoke Checks
+        working-directory: ./nyx-backend/bruno
+        run: bru run --env local
+        
+      # Optional: Probe bounds with known SQLi vectors via CLI or separate security collection
+      - name: SQLi Security Probe
+        working-directory: ./nyx-backend
+        run: |
+          # Sending raw SQLi payloads to ensure 400s or sanitization 
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8080/api/v1/auth/login -H "Content-Type: application/json" -d '{"email": "admin@nyx.com'\'' OR 1=1;--", "password": "doesntmatter"}')
+          if [ "$HTTP_STATUS" != "400" ] && [ "$HTTP_STATUS" != "401" ] && [ "$HTTP_STATUS" != "404" ]; then
+            echo "Security Probe Failed: Expected 400/401/404, got $HTTP_STATUS"
+            exit 1
+          fi
