@@ -9,7 +9,7 @@ func HubRoutes(router *gin.RouterGroup) {
 	hubs := router.Group("/hubs")
 	{
 		// Public endpoints
-		hubs.GET("/", FetchHubs)
+		hubs.GET("", FetchHubs)
 		hubs.GET("/:id", FetchHubById)
 
 		// Admin-only endpoints
