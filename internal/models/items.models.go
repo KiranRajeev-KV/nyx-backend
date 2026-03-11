@@ -45,8 +45,8 @@ type UpdateItemRequest struct {
 func (r UpdateItemRequest) Validate() (errorMsg string, err error) {
 	err = v.ValidateStruct(&r,
 		v.Field(&r.Name, v.When(r.Name != nil, v.Length(3, 100).Error("Name must be between 3 and 100 characters"))),
-		v.Field(&r.Description, v.When(r.Description != nil, v.Length(10, 500).Error("Description must be between 10 and 500 characters"))),
-		v.Field(&r.Location, v.When(r.Location != nil, v.Length(5, 200).Error("Location must be between 5 and 200 characters"))),
+		v.Field(&r.Description, v.When(r.Description != nil, v.Length(1, 500).Error("Description must be between 1 and 500 characters"))),
+		v.Field(&r.Location, v.When(r.Location != nil, v.Length(1, 200).Error("Location must be between 1 and 200 characters"))),
 		v.Field(&r.HubId, v.When(r.HubId != nil, is.UUID.Error("Hub ID must be a valid UUID"))),
 		v.Field(&r.TimeAt),
 		v.Field(&r.Latitude),
