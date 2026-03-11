@@ -110,6 +110,9 @@ func StartServer() {
 	router.Use(pkg.TagRequestWithId)
 	router.Use(mw.LogMiddleware(logger.Log))
 
+	router.RedirectTrailingSlash = false
+	router.RedirectFixedPath = false
+
 	router.GET("/test", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "Server is running!",

@@ -11,6 +11,7 @@ import (
 	"github.com/KiranRajeev-KV/nyx-backend/pkg"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 func Auth(c *gin.Context) {
@@ -111,6 +112,15 @@ func checkBanned(c *gin.Context) bool {
 	q := db.New()
 	isBanned, err := q.CheckUserBanned(ctx, conn, userUUID)
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			// User no longer exists in database (e.g., after DB reset)
+			pkg.NullifyCookies(c)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"message": "Session expired or invalid. Please log in again.",
+			})
+			logger.Log.WarnCtx(c, "[AUTH-BAN-CHECK] Access attempted with non-existent user ID")
+			return true // stop request
+		}
 		logger.Log.ErrorCtx(c, "[AUTH-BAN-CHECK] Failed to check ban status", err)
 		return false
 	}
